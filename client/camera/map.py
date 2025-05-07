@@ -1,0 +1,1 @@
+from loader.content import yml_content

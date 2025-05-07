@@ -1,0 +1,16 @@
+metadata:
+  type: cmd
+  version: "1.0"
+
+commands:
+  help:
+    type: cmd
+    description: "Show available commands"
+    function: "help_cmd"
+  echo:
+    type: cmd
+    description: "Echo back the input"
+    function: "echo_cmd"
+  fps:
+    type: cmd    description: "Toggle FPS counter display"
+    function: "fps_cmd" 
