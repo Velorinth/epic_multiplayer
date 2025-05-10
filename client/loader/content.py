@@ -3,7 +3,9 @@ from pathlib import Path
 import os
 
 def get_content_dir():
-    return Path(__file__).parent.parent / "assets" / "content"
+    # Get the project root directory (three levels up from this file)
+    project_root = Path(__file__).parent.parent.parent
+    return project_root / "assets" / "content"
 
 yml_content = {}
 
@@ -23,4 +25,5 @@ def loader():
     return yml_content
 
 def load_content():
+    print(loader())
     return loader()

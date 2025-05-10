@@ -1,6 +1,0 @@
-metadata:
-  version: "1.0"
-
-player:
-type: character
-  path: "player/player.png" 

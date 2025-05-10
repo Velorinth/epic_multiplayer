@@ -1,21 +1,20 @@
 import pyglet
 from loader.content import yml_content, load_content
-from camera.window import main_window
-from camera.map import MapRenderer
+from render.renderer import batch, initialize_map, draw_map
 
-map_renderer = None
+window = pyglet.window.Window(width=800, height=600)
+
+@window.event
+def on_draw():
+    window.clear()
+    batch.draw()
 
 def app_start():
-    load_content()
-    global map_renderer
-    map_renderer = MapRenderer(main_window)
-    
-    # Add the draw event to main_window
-    @main_window.event
-    def on_draw():
-        main_window.clear()
-        if map_renderer:
-            map_renderer.draw()
+    if not load_content():
+        print("Failed to load content")
+        return
+    print("Content loaded successfully")
     pyglet.app.run()
 
-app_start()
+if __name__ == "__main__":
+    app_start()

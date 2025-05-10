@@ -12,5 +12,6 @@ commands:
     description: "Echo back the input"
     function: "echo_cmd"
   fps:
-    type: cmd    description: "Toggle FPS counter display"
+    type: cmd
+    description: "Toggle FPS counter display"
     function: "fps_cmd" 
