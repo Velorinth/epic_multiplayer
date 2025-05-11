@@ -2,6 +2,36 @@ import yaml
 from pathlib import Path
 import os
 
+def get_object_properties(obj_name):
+    """Get properties for any object by its exact name, regardless of where it's located in the content structure"""
+    def search_dict(d, obj_name):
+        """Recursively search through a dictionary for the object name"""
+        if not isinstance(d, dict):
+            return None
+            
+        # Check if the object is directly in this dictionary
+        if obj_name in d:
+            return d[obj_name]
+            
+        # Recursively search through all values
+        for value in d.values():
+            if isinstance(value, dict):
+                result = search_dict(value, obj_name)
+                if result is not None:
+                    return result
+        return None
+    
+    # Search through all loaded content
+    for data in yml_content.values():
+        if isinstance(data, dict):
+            result = search_dict(data, obj_name)
+            if result is not None:
+                return {
+                    'name': obj_name,
+                    **result
+                }
+    return None
+
 def get_content_dir():
     # Get the project root directory (three levels up from this file)
     project_root = Path(__file__).parent.parent.parent

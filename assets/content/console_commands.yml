@@ -1,7 +1,3 @@
-metadata:
-  type: cmd
-  version: "1.0"
-
 commands:
   help:
     type: cmd
