@@ -57,7 +57,7 @@ class GameWindow(arcade.Window):
         self.gui_camera.use()
 
     def on_update(self, delta_time):
-        """Update function called at 170Hz"""
+        """Update function"""
         self.player.update(delta_time)
         
         # Update camera position
