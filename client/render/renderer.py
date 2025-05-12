@@ -20,6 +20,8 @@ def draw_map():
         if tile_props["texture"] not in loaded_textures:
             loaded_textures[tile_props["texture"]] = pyglet.image.load(f"assets/textures/{tile_props['texture']}")
         texture = loaded_textures[tile_props["texture"]]
+        
+        # Create sprite
         sprite = Sprite(texture, 
                         x=tile['x'] * tile_size, 
                         y=tile['y'] * tile_size,
@@ -31,6 +33,39 @@ def draw_map():
         
         tile['sprite'] = sprite
 
+def update_camera_position(camera_x, camera_y, player):
+    """Update all sprite positions based on camera position"""
+    tile_size = 32
+    map = yml_content['map']
+    
+    for tile in map['layout']['tiles']:
+        if 'sprite' in tile:
+            sprite = tile['sprite']
+            sprite.x = (tile['x'] * tile_size) - camera_x
+            sprite.y = (tile['y'] * tile_size) - camera_y
+    tile_name = 'player'
+    tile_props = get_content(tile_name)
+    if tile_props["texture"] not in loaded_textures:
+        loaded_textures[tile_props["texture"]] = pyglet.image.load(f"assets/textures/{tile_props['texture']}")
+    texture = loaded_textures[tile_props["texture"]]
+    sprite = Sprite(texture, 
+                    x=player.x, 
+                    y=player.y,
+                    batch=batch)
+
+def draw_player(player):
+    """Draw the player"""
+    tile_name = 'player'
+    tile_props = get_content(tile_name)
+    if tile_props["texture"] not in loaded_textures:
+        loaded_textures[tile_props["texture"]] = pyglet.image.load(f"assets/textures/{tile_props['texture']}")
+    texture = loaded_textures[tile_props["texture"]]
+    sprite = Sprite(texture, 
+                    x=player.x, 
+                    y=player.y,
+                    batch=batch)
+    
+    player.sprite = sprite
 
 def draw():
     """Draw all sprites in the batch"""
