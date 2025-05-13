@@ -4,7 +4,7 @@ class Player:
     def __init__(self):
         self.x = 0
         self.y = 0
-        self.speed = 3  # pixels per second
+        self.speed = 30000  # pixels per second
         self.velocity_x = 0
         self.velocity_y = 0
         self.keys = {
@@ -25,7 +25,6 @@ class Player:
             self.keys['S'] = True
         if symbol == arcade.key.D:
             self.keys['D'] = True
-        print(f"Current keys: {self.keys}")
             
     def on_key_release(self, symbol, modifiers):
         """Handle key release events"""
@@ -38,37 +37,33 @@ class Player:
             self.keys['S'] = False
         if symbol == arcade.key.D:
             self.keys['D'] = False
-        print(f"Current keys: {self.keys}")
-            
-    def update(self, dt):
-        """Update player position"""
-        # Reset velocity to small values when no keys are pressed
+
+    def key_movement(self, dt):
+        """Handle key press events"""
+        vx = 0
+        vy = 0
+        #print(f"Key pressed: {self.keys}")
         if not any(self.keys.values()):
-            self.velocity_x = 0
-            self.velocity_y = 0
+            print(f"No keys pressed: {self.keys},vel {vx},{vy},pos {self.x},{self.y}")
+            vx = 0
+            vy = 0
+            return
         else:
-            # Calculate velocity based on keys
-            if self.keys['W'] and self.velocity_y < self.speed:
-                self.velocity_y += self.speed * dt
-            if self.keys['S'] and self.velocity_y > -self.speed:
-                self.velocity_y -= self.speed * dt
-            if self.keys['A'] and self.velocity_x > -self.speed:
-                self.velocity_x -= self.speed * dt
-            if self.keys['D'] and self.velocity_x < self.speed:
-                self.velocity_x += self.speed * dt
+            if self.keys['W']:
+                vy += self.speed * dt
+            if self.keys['A']:
+                vx -= self.speed * dt
+            if self.keys['S']:
+                vy -= self.speed * dt
+            if self.keys['D']:
+                vx += self.speed * dt
 
-            # Clamp velocity to max speed
-            self.velocity_x = max(-self.speed, min(self.velocity_x, self.speed))
-            self.velocity_y = max(-self.speed, min(self.velocity_y, self.speed))
+        print(f"vel {vx},{vy},pos {self.x},{self.y}")
+        self.x += vx * dt
+        self.y += vy * dt
 
-            # Handle diagonal movement - reduce speed when moving diagonally
-            if abs(self.velocity_x) > 0 and abs(self.velocity_y) > 0:
-                self.velocity_x *= 0.707  # ~1/sqrt(2)
-                self.velocity_y *= 0.707
-
-        # Apply velocity
-        self.x += self.velocity_x * dt
-        self.y += self.velocity_y * dt
+        vx = 0
+        vy = 0
 
     def get_position(self):
         return self.x, self.y

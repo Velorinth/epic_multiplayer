@@ -58,8 +58,7 @@ class GameWindow(arcade.Window):
 
     def on_update(self, delta_time):
         """Update function"""
-        self.player.update(delta_time)
-        
+        self.player.key_movement(dt=delta_time)
         # Update camera position
         player_pos = self.player.get_position()
         self.camera.position = player_pos
