@@ -13,9 +13,10 @@ class Player:
             'S': False,
             'D': False
         }
-        
+
     def on_key_press(self, symbol, modifiers):
         """Handle key press events"""
+        # Handle movement keys if not handled by inventory
         print(f"Key pressed: {symbol}")
         if symbol == arcade.key.W:
             self.keys['W'] = True
@@ -42,9 +43,9 @@ class Player:
         """Handle key press events"""
         vx = 0
         vy = 0
-        #print(f"Key pressed: {self.keys}")
+        
         if not any(self.keys.values()):
-            print(f"No keys pressed: {self.keys},vel {vx},{vy},pos {self.x},{self.y}")
+            #print(f"No keys pressed: {self.keys},vel {vx},{vy},pos {self.x},{self.y}")
             vx = 0
             vy = 0
             return

@@ -55,7 +55,6 @@ class GameWindow(arcade.Window):
         
         # Draw the GUI using the GUI camera
         self.gui_camera.use()
-
     def on_update(self, delta_time):
         """Update function"""
         self.player.key_movement(dt=delta_time)
