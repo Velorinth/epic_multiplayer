@@ -71,6 +71,4 @@ def draw_player(player):
 def draw():
     """Draw all sprites in the sprite list"""
     sprite_list.draw()
-    
-    # Draw debug info
     arcade.draw_text(f"Sprites: {len(sprite_list)}", 10, 10, arcade.color.WHITE, 12)

@@ -59,7 +59,7 @@ class Player:
             if self.keys['D']:
                 vx += self.speed * dt
 
-        print(f"vel {vx},{vy},pos {self.x},{self.y}")
+        #print(f"vel {vx},{vy},pos {self.x},{self.y}")
         self.x += vx * dt
         self.y += vy * dt
 

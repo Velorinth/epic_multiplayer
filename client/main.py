@@ -6,15 +6,19 @@ import os
 from loader.content import yml_content, load_content
 from render.renderer import draw, draw_map, update_camera_position, draw_player
 from game.player import Player
-
+import time
 # Change working directory to project root
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Create window and set up Arcade
 class GameWindow(arcade.Window):
     def __init__(self, width, height, title):
+        self.fps_limit = 1200
+        super().__init__(width, height, title, update_rate=1/self.fps_limit, draw_rate=1/self.fps_limit, vsync=False)
+        self.frame_times = []
+        self.last_time = time.time()
+        self.prnt_cntr = 0
         content = load_content()
-        super().__init__(width, height, title)
         arcade.set_background_color(arcade.color.BLACK)
         
         # Set up the camera
@@ -55,6 +59,18 @@ class GameWindow(arcade.Window):
         
         # Draw the GUI using the GUI camera
         self.gui_camera.use()
+
+        current_time = time.time()
+        self.frame_times.append(current_time)
+        # Keep only the last 60 frames
+        self.frame_times = [t for t in self.frame_times if current_time - t <= 1.0]
+        fps = len(self.frame_times)
+        if self.prnt_cntr <= 10:
+            self.prnt_cntr += 1
+            return
+        else:
+            self.prnt_cntr = 0
+            print(f"FPS: {fps:.2f}")
     def on_update(self, delta_time):
         """Update function"""
         self.player.key_movement(dt=delta_time)
