@@ -4,7 +4,7 @@ class Player:
     def __init__(self):
         self.x = 0
         self.y = 0
-        self.speed = 30000  # pixels per second
+        self.speed = 150  # pixels per second
         self.velocity_x = 0
         self.velocity_y = 0
         self.keys = {
@@ -60,8 +60,8 @@ class Player:
                 vx += self.speed * dt
 
         #print(f"vel {vx},{vy},pos {self.x},{self.y}")
-        self.x += vx * dt
-        self.y += vy * dt
+        self.x += vx
+        self.y += vy
 
         vx = 0
         vy = 0

@@ -10,11 +10,13 @@ import time
 # Change working directory to project root
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+fps_limit = 999099999
+
 # Create window and set up Arcade
 class GameWindow(arcade.Window):
     def __init__(self, width, height, title):
-        self.fps_limit = 1200
-        super().__init__(width, height, title, update_rate=1/self.fps_limit, draw_rate=1/self.fps_limit, vsync=False)
+        self.fps_limit = fps_limit
+        super().__init__(width, height, title, update_rate=1/self.fps_limit, draw_rate=1/self.fps_limit, vsync=False, resizable=True)
         self.frame_times = []
         self.last_time = time.time()
         self.prnt_cntr = 0
@@ -65,11 +67,12 @@ class GameWindow(arcade.Window):
         # Keep only the last 60 frames
         self.frame_times = [t for t in self.frame_times if current_time - t <= 1.0]
         fps = len(self.frame_times)
-        if self.prnt_cntr <= 10:
+        if self.prnt_cntr <= fps/2:
             self.prnt_cntr += 1
             return
         else:
             self.prnt_cntr = 0
+            print(f"pos: {self.player.get_position()}")
             print(f"FPS: {fps:.2f}")
     def on_update(self, delta_time):
         """Update function"""
@@ -89,5 +92,5 @@ class GameWindow(arcade.Window):
 
 if __name__ == "__main__":
     window = GameWindow(800, 600, "Epic Multiplayer!!11!!11!11")
-    window.set_update_rate(1.0/170.0)
+    window.set_update_rate(1.0/fps_limit)
     arcade.run()
