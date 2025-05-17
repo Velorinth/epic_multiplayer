@@ -3,8 +3,15 @@ from pathlib import Path
 import os
 import sys
 
+# Cache for storing previously queried objects
+_content_cache = {}
+
 def get_object_properties(obj_name):
     """Get properties for any object by its exact name, regardless of where it's located in the content structure"""
+    # Check cache first
+    if obj_name in _content_cache:
+        return _content_cache[obj_name]
+
     def search_dict(d, obj_name):
         """Recursively search through a dictionary for the object name"""
         if not isinstance(d, dict):
@@ -27,11 +34,19 @@ def get_object_properties(obj_name):
         if isinstance(data, dict):
             result = search_dict(data, obj_name)
             if result is not None:
-                return {
+                # Store in cache before returning
+                cached_result = {
                     'name': obj_name,
                     **result
                 }
+                _content_cache[obj_name] = cached_result
+                return cached_result
     return None
+
+# Clear cache when content is reloaded
+def clear_content_cache():
+    """Clear the content cache when content is reloaded"""
+    _content_cache.clear()
 
 def get_content_dir():
     # Get the base directory (works for both development and executable)

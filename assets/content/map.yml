@@ -1,4 +1,5 @@
 layout:
+  name: Test Map
   tiles:
   - rot: 0
     tile: sand

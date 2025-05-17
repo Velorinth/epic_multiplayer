@@ -1,22 +1,11 @@
 import arcade
 import os
-import sys
-from pathlib import Path
 from loader.content import yml_content
 from loader.content import get_object_properties as get_content
 
 loaded_textures = {}
 
 sprite_list = arcade.SpriteList()
-
-def get_base_path():
-    """Get the base path for assets, works for both development and executable"""
-    if getattr(sys, 'frozen', False):
-        # Running as executable
-        return Path(sys._MEIPASS)
-    else:
-        # Running in development mode
-        return Path(__file__).parent.parent
 
 def draw_map():
     """Draw the map tiles"""
@@ -27,10 +16,9 @@ def draw_map():
         tile_name = tile['tile']
         tile_props = get_content(tile_name)
         if tile_props["texture"] not in loaded_textures:
-            base_path = get_base_path()
-            texture_path = base_path / "assets" / "textures" / tile_props["texture"]
-            loaded_textures[tile_props["texture"]] = arcade.load_texture(str(texture_path))
-        texture = loaded_textures[tile_props["texture"]]        
+            loaded_textures[tile_props["texture"]] = arcade.load_texture(f"assets/textures/{tile_props['texture']}")
+        texture = loaded_textures[tile_props["texture"]]
+        
         # Create sprite
         sprite = arcade.Sprite(texture,
                               center_x=tile['x'] * tile_size,
@@ -71,9 +59,7 @@ def draw_player(player):
     tile_name = 'player'
     tile_props = get_content(tile_name)
     if tile_props["texture"] not in loaded_textures:
-        base_path = get_base_path()
-        texture_path = base_path / "assets" / "textures" / tile_props["texture"]
-        loaded_textures[tile_props["texture"]] = arcade.load_texture(str(texture_path))
+        loaded_textures[tile_props["texture"]] = arcade.load_texture(f"assets/textures/{tile_props['texture']}")
     texture = loaded_textures[tile_props["texture"]]
     sprite = arcade.Sprite(texture,
                           center_x=player.x,

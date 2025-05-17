@@ -7,7 +7,6 @@ assets_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets')
 PyInstaller.__main__.run([
     '--name=epic_multiplayer',
     '--onefile',
-    '--windowed',
     '--hidden-import=render.renderer',
     '--hidden-import=loader.content',
     '--hidden-import=arcade',

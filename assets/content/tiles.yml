@@ -1,17 +1,21 @@
 tiles:
   grass:
+    name: Grass
     type: tile
     texture: "tiles/grass.png"
     wall: false
   dirt:
+    name: Dirt
     type: tile
     texture: "tiles/dirt.png"
     wall: false
   water:
+    name: Water
     type: tile
     texture: "tiles/water.png"
     wall: true
   sand:
+    name: Sand
     type: tile
     texture: "tiles/sand.png"
     wall: false

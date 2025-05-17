@@ -6,6 +6,7 @@ import os
 from loader.content import yml_content, load_content
 from render.renderer import draw, draw_map, update_camera_position, draw_player
 from game.player import Player
+from game.inventory import Inventory
 import time
 # Change working directory to project root
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -36,6 +37,12 @@ class GameWindow(arcade.Window):
         )
         self.camera = Camera2D(viewport=viewport)
         self.gui_camera = Camera2D(viewport=viewport)
+        self.inventory = Inventory()
+
+        self.inventory.add_item("dirt")
+        self.inventory.add_item("sand")
+        self.inventory.add_item("water")
+        self.inventory.add_item("player")
         
         # Initialize game
         self.setup()
@@ -59,12 +66,12 @@ class GameWindow(arcade.Window):
         self.camera.use()
         draw()
         
-        # Draw the GUI using the GUI camera
         self.gui_camera.use()
+        self.inventory.update_inventory(self.width, self.height)
 
+        # frame rate
         current_time = time.time()
         self.frame_times.append(current_time)
-        # Keep only the last 60 frames
         self.frame_times = [t for t in self.frame_times if current_time - t <= 1.0]
         fps = len(self.frame_times)
         if self.prnt_cntr <= fps/2:
