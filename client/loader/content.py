@@ -1,6 +1,7 @@
 import yaml
 from pathlib import Path
 import os
+import sys
 
 def get_object_properties(obj_name):
     """Get properties for any object by its exact name, regardless of where it's located in the content structure"""
@@ -33,9 +34,15 @@ def get_object_properties(obj_name):
     return None
 
 def get_content_dir():
-    # Get the project root directory (three levels up from this file)
-    project_root = Path(__file__).parent.parent.parent
-    return project_root / "assets" / "content"
+    # Get the base directory (works for both development and executable)
+    if getattr(sys, 'frozen', False):
+        # Running as executable
+        base_path = sys._MEIPASS
+    else:
+        # Running in development mode
+        base_path = Path(__file__).parent.parent.parent
+    
+    return Path(base_path) / "assets" / "content"
 
 yml_content = {}
 
