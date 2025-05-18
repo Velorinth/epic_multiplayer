@@ -11,10 +11,10 @@ pip install pyyaml
 
 To run:
 ```bash
-cd {game insttall directory}
+cd {game install directory}
 . ./run-client.bat
 ```
 or open the bat file from mexplorer
 ## Contributing
 
-do anything but like please dont use WAY to mmuch ai and like describe the stuff you change in the pull request
+do anything but like describe the stuff you change in the pull request
