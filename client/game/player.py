@@ -14,7 +14,7 @@ class Player:
             'D': False
         }
 
-    def on_key_press(self, symbol, modifiers):
+    def on_key_press_player(self, symbol, modifiers):
         """Handle key press events"""
         # Handle movement keys if not handled by inventory
         print(f"Key pressed: {symbol}")
@@ -27,7 +27,7 @@ class Player:
         if symbol == arcade.key.D:
             self.keys['D'] = True
             
-    def on_key_release(self, symbol, modifiers):
+    def on_key_release_player(self, symbol, modifiers):
         """Handle key release events"""
         print(f"Key released: {symbol}")
         if symbol == arcade.key.W:

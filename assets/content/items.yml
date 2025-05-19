@@ -40,3 +40,9 @@ items:
     color: [135, 206, 235]  # Light Blue
     texture: "items/gem.png"
     description: "A valuable crystal" 
+
+  cheese:
+    name: "Cheese"
+    color: [255, 255, 0]  # Yellow
+    texture: "items/Cheese.png"
+    description: "A delicious food" 

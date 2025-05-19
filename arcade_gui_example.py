@@ -12,29 +12,30 @@ class Inventory:
         self.font_size = 12
         self.text_color = arcade.color.WHITE
         self.is_open = False
+        self.updated = True
         
         # Create a reusable shape list
         self.shape_list = arcade.shape_list.ShapeElementList()
+        
+        # Create a single text object for all inventory items
+        self.all_text = arcade.Text(
+            "",
+            0,
+            0,
+            self.text_color,
+            self.font_size
+        )
         
     def add_item(self, item):
         """Add an item to the inventory"""
         if item not in self.items:
             self.items.append(item)
-            # Create text object for new item
-            self.items_text[item] = arcade.Text(
-                get_content(item)['name'],
-                0,  # Will be updated in update_inventory
-                0,  # Will be updated in update_inventory
-                self.text_color,
-                self.font_size
-            )
             self.updated = True
     
     def remove_item(self, item):
         """Remove an item from the inventory"""
         if item in self.items:
             self.items.remove(item)
-            del self.items_text[item]
             self.updated = True
 
     def on_key_press_inventory(self, symbol, modifiers):
@@ -48,11 +49,18 @@ class Inventory:
         if not self.is_open:
             return
             
+        # Only update if inventory state changed
+        if not self.updated:
+            return
+            
         # Clear existing shapes
         self.shape_list.clear()
         
-        # Update item positions
+        # Build the text string
+        text_str = ""
         self.draw_y = screen_height/2
+        
+        # Update item positions and build text
         for item in self.items:
             # Draw item background
             item_bg = arcade.shape_list.create_rectangle_filled(
@@ -64,14 +72,16 @@ class Inventory:
             )
             self.shape_list.append(item_bg)
             
-            # Update text position
-            text = self.items_text[item]
-            text.position = (screen_width/2 - 50, self.draw_y - 5)
+            # Add text to string
+            text_str += get_content(item)['name'] + "\n"
             self.draw_y += 20
+        
+        # Update text object
+        self.all_text.text = text_str
+        self.all_text.position = (screen_width/2 - 50, screen_height/2 - (20 * len(self.items)) + 10)
         
         # Draw all shapes in a single batch
         self.shape_list.draw()
         
-        # Draw all text objects
-        for text in self.items_text.values():
-            text.draw()
+        # Draw text in a single call
+        self.all_text.draw()

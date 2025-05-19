@@ -46,7 +46,7 @@ def generate_map():
                 'tile': tile_type,
                 'x': x,
                 'y': y,
-                'rot': 0
+                'rot': 100
             })
 
     # Save to YAML file

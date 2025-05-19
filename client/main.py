@@ -92,10 +92,11 @@ class GameWindow(arcade.Window):
 
 
     def on_key_press(self, symbol, modifiers):
-        self.player.on_key_press(symbol, modifiers)
+        self.player.on_key_press_player(symbol, modifiers)
+        self.inventory.on_key_press_inventory(symbol, modifiers)
 
     def on_key_release(self, symbol, modifiers):
-        self.player.on_key_release(symbol, modifiers)
+        self.player.on_key_release_player(symbol, modifiers)
 
 if __name__ == "__main__":
     window = GameWindow(800, 600, "Epic Multiplayer!!11!!11!11")
