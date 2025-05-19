@@ -1,0 +1,3 @@
+background_music_1:
+  type: sound
+  file: "sound/music/epic_music.mp3"

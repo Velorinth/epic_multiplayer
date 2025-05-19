@@ -7,6 +7,7 @@ from loader.content import yml_content, load_content
 from render.renderer import draw, draw_map, update_camera_position, draw_player
 from game.player import Player
 from game.inventory import Inventory
+from game.music import MusicPlayer
 import time
 # Change working directory to project root
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -43,6 +44,9 @@ class GameWindow(arcade.Window):
         self.inventory.add_item("sand")
         self.inventory.add_item("water")
         self.inventory.add_item("player")
+        self.music_player = MusicPlayer()
+        self.music_player.load_song()
+        self.music_player.play()
         
         # Initialize game
         self.setup()
