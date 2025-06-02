@@ -4,7 +4,7 @@ from arcade.camera import Camera2D
 from arcade.types import Rect
 import os
 from loader.content import yml_content, load_content
-from render.renderer import draw, draw_map, update_camera_position, draw_player
+from render.renderer import draw, draw_map, update_camera_position, draw_player, active_sprites
 from game.player import Player
 from game.inventory import Inventory
 from game.music import MusicPlayer
@@ -48,6 +48,10 @@ class GameWindow(arcade.Window):
         self.music_player.load_song()
         self.music_player.play()
         
+        # Initialize the renderer after content is loaded
+        from render.renderer import initialize_renderer
+        initialize_renderer()
+        
         # Initialize game
         self.setup()
         
@@ -57,10 +61,7 @@ class GameWindow(arcade.Window):
         self.player = Player()
         
         # Initialize the map (create sprites)
-        draw_map()
         draw_player(self.player)
-
-
 
     def on_draw(self):
         """Draw the window contents"""
@@ -68,23 +69,33 @@ class GameWindow(arcade.Window):
         
         # Draw the game using the game camera
         self.camera.use()
+        draw_map(self)
         draw()
         
         self.gui_camera.use()
-        self.inventory.update_inventory(self.width, self.height)
+        self.inventory.draw_inventory(self.width, self.height)
 
-        # frame rate
+        # Update FPS counter
         current_time = time.time()
         self.frame_times.append(current_time)
-        self.frame_times = [t for t in self.frame_times if current_time - t <= 1.0]
-        fps = len(self.frame_times)
-        if self.prnt_cntr <= fps/2:
-            self.prnt_cntr += 1
-            return
-        else:
-            self.prnt_cntr = 0
-            print(f"pos: {self.player.get_position()}")
-            print(f"FPS: {fps:.2f}")
+        
+        # Only update debug info every 30 frames to reduce console spam
+        if len(self.frame_times) % 30 == 0:
+            # Calculate FPS based on last second of frames
+            self.frame_times = [t for t in self.frame_times if current_time - t <= 1.0]
+            fps = len(self.frame_times)
+            
+            # Get player position
+            pos = self.player.get_position()
+            
+            # Print debug info in a single line
+            print(f"Sprites: {len(active_sprites):<5} | "
+                  f"Pos: ({pos[0]:.1f}, {pos[1]:.1f}) | "
+                  f"FPS: {fps:3.0f}", end='\r')
+            
+            # Clear frame times occasionally to prevent memory growth
+            if len(self.frame_times) > 120:  # Keep max 2 seconds of frame times
+                self.frame_times = self.frame_times[-60:]  # Keep only last second
     def on_update(self, delta_time):
         """Update function"""
         self.player.key_movement(dt=delta_time)
@@ -98,6 +109,19 @@ class GameWindow(arcade.Window):
     def on_key_press(self, symbol, modifiers):
         self.player.on_key_press_player(symbol, modifiers)
         self.inventory.on_key_press_inventory(symbol, modifiers)
+
+    def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
+        """
+        Called when the user presses a mouse button.
+        
+        Args:
+            x: x position of mouse
+            y: y position of mouse
+            button: what button was hit
+            modifiers: shift, ctrl, etc
+        """
+        # Pass the event to the inventory system
+        self.inventory.on_mouse_press(x, y, button, modifiers)
 
     def on_key_release(self, symbol, modifiers):
         self.player.on_key_release_player(symbol, modifiers)
