@@ -110,7 +110,7 @@ def init_map() -> None:
             # Create sprite
             sprite = arcade.Sprite(texture)
             sprite.scale = TILE_SIZE / max(texture.width, texture.height)
-            sprite.position = (tile['x'] * TILE_SIZE, tile['y'] * TILE_SIZE)
+            sprite.position = (round(tile['x'] * TILE_SIZE), round(tile['y'] * TILE_SIZE))
             
             # Store sprite with its grid position as key
             tile_sprites[(tile['x'], tile['y'])] = sprite
