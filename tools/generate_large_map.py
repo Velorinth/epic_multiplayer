@@ -44,10 +44,9 @@ def generate_large_map(width=100, height=100, output_file="assets/content/large_
             
             # Create tile entry
             tile = {
-                'rot': 0,
                 'tile': terrain,
                 'x': x,
-                'y': y
+                'y': y,
             }
             map_data['layout']['tiles'].append(tile)
     
