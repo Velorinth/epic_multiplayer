@@ -77,5 +77,38 @@ def loader():
     return yml_content
 
 def load_content():
-    print(loader())
+    #print(loader())
     return loader()
+
+def update_prototype(prototype_name, updates):
+    """
+    Update a prototype in memory without modifying the original file.
+    
+    Args:
+        prototype_name (str): The exact name of the prototype to update
+        updates (dict): Dictionary of key-value pairs to update in the prototype
+        
+    Returns:
+        bool: True if the prototype was found and updated, False otherwise
+    """
+    # Clear the cache for this prototype if it exists
+    _content_cache.pop(prototype_name, None)
+    
+    # Search through all loaded content to find the prototype
+    for content in yml_content.values():
+        if not isinstance(content, dict):
+            continue
+            
+        # Check if this is the prototype we're looking for
+        if prototype_name in content:
+            # Update the prototype with new values
+            content[prototype_name].update(updates)
+            return True
+            
+        # Recursively search through nested dictionaries
+        for value in content.values():
+            if isinstance(value, dict) and prototype_name in value:
+                value[prototype_name].update(updates)
+                return True
+                
+    return False
