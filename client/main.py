@@ -8,7 +8,9 @@ from render.renderer import draw, draw_map, update_camera_position, draw_player,
 from game.player import Player
 from game.inventory import Inventory
 from game.music import MusicPlayer
+from networking.main import start_client
 import time
+import threading
 # Change working directory to project root
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -39,7 +41,18 @@ class GameWindow(arcade.Window):
         self.camera = Camera2D(viewport=viewport)
         self.gui_camera = Camera2D(viewport=viewport)
         self.inventory = Inventory()
-
+        
+        # Create player instance
+        self.player = Player()  # Assuming Player class exists and is properly imported
+        
+        # Start network client in a separate thread
+        self.network_thread = threading.Thread(
+            target=start_client,
+            args=(self.player,),  # Pass the player instance
+            daemon=True  # This ensures the thread will close when the main program exits
+        )
+        self.network_thread.start()
+        
         self.inventory.add_item("dirt")
         self.inventory.add_item("sand")
         self.inventory.add_item("water")
@@ -47,6 +60,7 @@ class GameWindow(arcade.Window):
         self.music_player = MusicPlayer()
         self.music_player.load_song()
         self.music_player.play()
+        self.dt = 0
         
         # Initialize the renderer after content is loaded
         from render.renderer import initialize_renderer
@@ -57,9 +71,6 @@ class GameWindow(arcade.Window):
         
     def setup(self):
         """Set up the game and initialize the variables."""
-        # Create player
-        self.player = Player()
-        
         # Initialize the map (create sprites)
         draw_player(self.player)
 
@@ -74,6 +85,8 @@ class GameWindow(arcade.Window):
         
         self.gui_camera.use()
         self.inventory.draw_inventory(self.width, self.height)
+
+        self.player.on_update(self.dt)
 
         # Update FPS counter
         current_time = time.time()
@@ -98,7 +111,8 @@ class GameWindow(arcade.Window):
                 self.frame_times = self.frame_times[-60:]  # Keep only last second
     def on_update(self, delta_time):
         """Update function"""
-        self.player.key_movement(dt=delta_time)
+        self.dt = delta_time
+        self.player.key_movement(dt=self.dt)
         # Update camera position
         player_pos = self.player.get_position()
         self.camera.position = player_pos
