@@ -1,0 +1,8 @@
+cheese:
+  type: entity
+  texture: "player/player.png"
+  size: small
+  big: true
+ #naming
+  name: "Cheese"
+  description: "A delicious food" 
