@@ -5,7 +5,7 @@ class Player:
     def __init__(self):
         self.x = 0
         self.y = 0
-        self.speed = 150  # pixels per second
+        self.speed = 250  # pixels per second
         self.velocity_x = 0
         self.velocity_y = 0
         self.keys = {
@@ -18,6 +18,7 @@ class Player:
         self._time_since_last_call = 0.0  # Time accumulator
         self.collidable_x = []
         self.collidable_y = []
+        self.collidable_objects = []  # Initialize empty list for collision detection
 
     def on_key_press_player(self, symbol, modifiers):
         """Handle key press events"""
@@ -194,12 +195,20 @@ class Player:
         Override this method to add functionality that should run every 0.05 seconds.
         This is called approximately 20 times per second.
         """
-        if not hasattr(self, 'last_collision_check_pos') or \
-           abs(self.x - self.last_collision_check_pos[0]) > 24 or \
-           abs(self.y - self.last_collision_check_pos[1]) > 24:
+        # Initialize last_collision_check_pos if it doesn't exist
+        if not hasattr(self, 'last_collision_check_pos'):
+            self.last_collision_check_pos = (self.x, self.y)
+            
+        if (abs(self.x - self.last_collision_check_pos[0]) > 24 or 
+            abs(self.y - self.last_collision_check_pos[1]) > 24):
             
             self.collidable_objects = []  # Reset collidable objects list
-            all_tiles = yml_content.get('map', {}).get('layout', {}).get('tiles', [])
+            # Safely get tiles, handling case when yml_content is None
+            all_tiles = []
+            if yml_content is not None and hasattr(yml_content, 'get'):
+                map_data = yml_content.get('map', {}) or {}
+                layout = map_data.get('layout', {}) if isinstance(map_data, dict) else {}
+                all_tiles = layout.get('tiles', []) if isinstance(layout, dict) else []
             
             # Only check tiles within 3 tiles radius of player
             player_tile_x = int(self.x // 48)
