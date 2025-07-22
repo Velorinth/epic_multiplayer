@@ -1,8 +1,9 @@
 cheese:
   type: entity
+  subtype: generic
   texture: "player/player.png"
-  size: small
-  big: true
- #naming
+  can_drag: true
+  inventory: false
+  wall:true
   name: "Cheese"
   description: "A delicious food" 
