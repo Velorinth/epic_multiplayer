@@ -2,9 +2,9 @@ import arcade
 import os
 import time
 from typing import Dict, List, Tuple, Set, Optional
-from loader.content import yml_content
 from loader.content import get_object_properties as get_content
 from dataclasses import dataclass
+from networking.main import get_tile_map
 
 # Constants
 TILE_SIZE = 48
@@ -53,15 +53,17 @@ def preload_textures() -> None:
     unique_textures = set()
     
     # Get all unique tile textures if map is available
-    if 'map' in yml_content and 'layout' in yml_content['map'] and 'tiles' in yml_content['map']['layout']:
-        for tile in yml_content['map']['layout']['tiles']:
+    tile_map = get_tile_map()
+    if 'layout' in tile_map and 'tiles' in tile_map['layout']:
+        for tile in tile_map['layout']['tiles']:
             try:
                 tile_props = get_content(tile['tile'])
                 if tile_props and 'texture' in tile_props:
                     unique_textures.add(tile_props["texture"])
             except (KeyError, TypeError):
                 continue
-    
+    else:
+        print('skill issue')
     # Get player texture
     try:
         player_props = get_content('player')
@@ -84,12 +86,14 @@ def init_map() -> None:
     
     tile_sprites.clear()
     
+    tile_map = get_tile_map()
+
     # Check if map data is available
-    if 'map' not in yml_content or 'layout' not in yml_content['map'] or 'tiles' not in yml_content['map']['layout']:
+    if 'layout' not in tile_map or 'tiles' not in tile_map['layout']:
         print("Warning: Map data not available for initialization")
-        return
+        raise "nah"
     
-    map_data = yml_content['map']
+    map_data = tile_map
     
     for tile in map_data['layout']['tiles']:
         try:
@@ -191,8 +195,6 @@ def update_visible_tiles(viewport: 'Viewport') -> None:
 
 def draw_map(window) -> None:
     """Update and draw the visible portion of the map."""
-    if not _initialized or 'map' not in yml_content:
-        return
     
     # Only update viewport if window size changed or first run
     if not hasattr(draw_map, '_last_size') or draw_map._last_size != (window.width, window.height):

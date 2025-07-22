@@ -74,6 +74,12 @@ def loader():
                     yml_content[file.stem] = data
         except Exception as e:
             print(f"Error loading {file}: {str(e)}")
+
+    # Immediately remove the local map content after loading.
+    # The client will wait for the map from the server instead.
+    if "map" in yml_content:
+        del yml_content["map"]
+
     return yml_content
 
 def load_content():

@@ -102,10 +102,11 @@ class GameWindow(arcade.Window):
             pos = self.player.get_position()
             
             # Print debug info in a single line
+            '''
             print(f"Sprites: {len(active_sprites):<5} | "
                   f"Pos: ({pos[0]:.1f}, {pos[1]:.1f}) | "
                   f"FPS: {fps:3.0f}", end='\r')
-            
+            '''
             # Clear frame times occasionally to prevent memory growth
             if len(self.frame_times) > 120:  # Keep max 2 seconds of frame times
                 self.frame_times = self.frame_times[-60:]  # Keep only last second

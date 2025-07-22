@@ -1,6 +1,8 @@
 import arcade
 from render.renderer import active_sprites
 from loader.content import yml_content, get_object_properties as get_content
+from networking.main import get_tile_map
+
 class Player:
     def __init__(self):
         self.x = 0
@@ -203,12 +205,15 @@ class Player:
             abs(self.y - self.last_collision_check_pos[1]) > 24):
             
             self.collidable_objects = []  # Reset collidable objects list
-            # Safely get tiles, handling case when yml_content is None
+            # Get tiles from the tile_map received from the server
             all_tiles = []
-            if yml_content is not None and hasattr(yml_content, 'get'):
-                map_data = yml_content.get('map', {}) or {}
-                layout = map_data.get('layout', {}) if isinstance(map_data, dict) else {}
-                all_tiles = layout.get('tiles', []) if isinstance(layout, dict) else []
+            tile_map = get_tile_map()
+            if isinstance(tile_map, dict):
+                #print(tile_map)
+                layout = tile_map.get('layout', {})
+                #print(layout)
+                if isinstance(layout, dict):
+                    all_tiles = layout.get('tiles', [])
             
             # Only check tiles within 3 tiles radius of player
             player_tile_x = int(self.x // 48)

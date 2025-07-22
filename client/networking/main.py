@@ -1,8 +1,11 @@
 import socket
 import threading
 import json
-from loader.content import yml_content
+
+
+
 def receive_messages(sock):
+    global tile_map
     while True:
         try:
             data = sock.recv(65536)
@@ -15,12 +18,16 @@ def receive_messages(sock):
                 if message['data']['type'] == 'entities':
                     pass
                 elif message['data']['type'] == 'map':
-                    yml_content['map'] = message['data']['data']
+                    tile_map = message['data']['data']
+                    #print(f"recieved map {tile_map}")
                     pass
             
         except ConnectionError:
             print("Connection lost")
             break
+
+def get_tile_map():
+    return tile_map 
 
 def send_messages(socket: socket.socket,player):
     s = socket
