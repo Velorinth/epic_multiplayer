@@ -4,6 +4,6 @@ cheese:
   texture: "player/player.png"
   can_drag: true
   inventory: false
-  wall:true
+  wall: true
   name: "Cheese"
   description: "A delicious food" 
