@@ -33,7 +33,7 @@ class TCPServer:
                         message = line.decode()
                         data = json.loads(message)
                         if data['type'] == 'join':
-                            print(f"Client joined: {addr}, sending map {yml_content['map']}")
+                            print(f"Client joined: {addr}, sending map ")
                             self.send_to_client(addr, json.dumps({'type': 'response', 'data': {'type': 'entities', 'data': entities}}))
                             self.send_to_client(addr, json.dumps({'type': 'response', 'data': {'type': 'map', 'data':yml_content['map']}}))
                         if data['type'] == 'update':
