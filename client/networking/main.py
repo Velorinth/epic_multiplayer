@@ -2,10 +2,15 @@ import socket
 import threading
 import json
 
+isConnectedToServer = False
+tile_map = {}
+entities = {}
+
 
 
 def receive_messages(sock):
     global tile_map
+    global entities
     while True:
         try:
             data = sock.recv(65536)
@@ -16,6 +21,8 @@ def receive_messages(sock):
             message = json.loads(data.decode())
             if message['type'] == 'response':
                 if message['data']['type'] == 'entities':
+                    entities = message['data']['data']
+                    #print(f"recieved entities {entities}")
                     pass
                 elif message['data']['type'] == 'map':
                     tile_map = message['data']['data']
@@ -27,7 +34,11 @@ def receive_messages(sock):
             break
 
 def get_tile_map():
-    return tile_map 
+    return tile_map
+
+def get_entities():
+    return entities
+
 
 def send_messages(socket: socket.socket,player):
     s = socket
@@ -43,10 +54,13 @@ def send_messages(socket: socket.socket,player):
     }
     s.sendall((json.dumps(message) + '\n').encode())  # Convert entire message to JSON once
 def start_client(player, host='127.0.0.1', port=5555):
+    global isConnectedToServer
+    isConnectedToServer = False
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         try:
             s.connect((host, port))
             print(f"Connected to {host}:{port}")
+            isConnectedToServer = True
             
             # Start receiving messages in a separate thread
             recv_thread = threading.Thread(target=receive_messages, args=(s,), daemon=True)

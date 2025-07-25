@@ -1,16 +1,23 @@
+#main script
+
+#import libraries
 from arcade import Window
 import arcade
 from arcade.camera import Camera2D
 from arcade.types import Rect
 import os
-from loader.content import yml_content, load_content
+import time
+import threading
+
+#import game content
+from networking.main import start_client, isConnectedToServer, entities
+from loader.content import yml_content, load_content, get_object_properties
 from render.renderer import draw, draw_map, update_camera_position, draw_player, active_sprites
 from game.player import Player
 from game.inventory import Inventory
 from game.music import MusicPlayer
-from networking.main import start_client
-import time
-import threading
+from entity.entity import Entity
+
 # Change working directory to project root
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -62,11 +69,15 @@ class GameWindow(arcade.Window):
         self.music_player.play()
         self.dt = 0
         
+        #time.sleep(2)
+        ent = Entity(id=67786767, params=get_object_properties("cheese"))
+        print(ent)
+        entities[ent.id] = ent
         # Initialize the renderer after content is loaded
         from render.renderer import initialize_renderer
         initialize_renderer()
         
-        # Initialize game
+        # Initialize gamep
         self.setup()
         
     def setup(self):
