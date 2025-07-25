@@ -70,7 +70,7 @@ class GameWindow(arcade.Window):
         self.dt = 0
         
         #time.sleep(2)
-        ent = Entity(id=67786767, params=get_object_properties("cheese"))
+        ent = Entity(id=67786767, params=get_object_properties("cheese"), proto="cheese",x=0.2)
         print(ent)
         entities[ent.id] = ent
         # Initialize the renderer after content is loaded

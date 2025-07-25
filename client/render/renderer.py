@@ -4,12 +4,12 @@ import time
 from typing import Dict, List, Tuple, Set, Optional
 from loader.content import get_object_properties as get_content
 from dataclasses import dataclass
-from networking.main import get_tile_map
+from networking.main import get_tile_map, entities
 
 # Constants
 TILE_SIZE = 48
 VIEWPORT_PADDING = 2  # Slightly increased padding to reduce updates when moving
-TEXTURE_SCALE = TILE_SIZE / 32  # Assuming 32x32 textures by default
+TEXTURE_SCALE = TILE_SIZE / 64  # Assuming 32x32 textures by default
 
 # Performance tracking
 _last_update_time = 0
@@ -19,6 +19,7 @@ _update_interval = 0.1  # Update viewport every 100ms
 loaded_textures: Dict[str, arcade.Texture] = {}
 active_sprites: arcade.SpriteList = arcade.SpriteList(use_spatial_hash=True)
 tile_sprites: Dict[Tuple[int, int], arcade.Sprite] = {}
+entity_sprites: Dict[str, arcade.Sprite] = {} # New: For storing entity sprites
 player_sprite: Optional[arcade.Sprite] = None
 _initialized = False
 _last_viewport = None  # Cache the last viewport to avoid unnecessary updates
@@ -64,7 +65,18 @@ def preload_textures() -> None:
                 continue
     else:
         print('skill issue')
-    # Get player texture
+
+    # Get all unique entity textures
+    if entities:
+        for entity in entities.values():
+            try:
+                entity_props = get_content(entity.proto)
+                if entity_props and 'texture' in entity_props:
+                    unique_textures.add(entity_props["texture"])
+            except (KeyError, TypeError):
+                continue
+
+    # Get player texture (can be redundant if player is in entities, but safe)
     try:
         player_props = get_content('player')
         if player_props and 'texture' in player_props:
@@ -108,7 +120,7 @@ def init_map() -> None:
             texture_name = tile_props["texture"]
             if texture_name not in loaded_textures:
                 continue
-                
+            
             texture = loaded_textures[texture_name]
             
             # Create sprite
@@ -122,6 +134,64 @@ def init_map() -> None:
         except (KeyError, TypeError) as e:
             print(f"Warning: Error processing tile at ({tile.get('x')}, {tile.get('y')}): {e}")
             continue
+
+def init_entities() -> None:
+    """Initialize sprites for all non-player entities."""
+    global entity_sprites
+    entity_sprites.clear()
+    
+    print("\n--- [DEBUG] Initializing Entities ---")
+    if not entities:
+        print("[DEBUG] 'entities' dictionary is empty or None. No entities to initialize.")
+        return
+    
+    print(f"[DEBUG] Found {len(entities)} total entities. Content: {entities}")
+
+    for entity_id, entity in entities.items():
+        print(f"\n[DEBUG] Processing entity_id: '{entity_id}', proto: '{entity.proto}'")
+        # Player is handled separately by draw_player, so we skip it here
+        if entity.proto == 'player':
+            print("[DEBUG] -> Skipping player entity.")
+            continue
+        
+        try:
+            props = get_content(entity.proto)
+            if not props or 'texture' not in props:
+                print("[DEBUG] -> SKIPPED: No properties or no 'texture' in properties.")
+                continue
+            
+            texture_name = props["texture"]
+            print(f"[DEBUG] -> Found texture name: '{texture_name}'")
+            if texture_name not in loaded_textures:
+                print(f"[DEBUG] -> SKIPPED: Texture '{texture_name}' not in 'loaded_textures'.")
+                continue
+            
+            texture = loaded_textures[texture_name]
+            sprite = arcade.Sprite(texture)
+            sprite.scale = TILE_SIZE / max(texture.width, texture.height)
+            sprite.position = (round(entity.x * TILE_SIZE), round(entity.y * TILE_SIZE))
+            sprite.angle = entity.rot
+            
+            entity_sprites[entity_id] = sprite
+            print(f"[DEBUG] -> SUCCESS: Created sprite at position {sprite.position}")
+        except (KeyError, TypeError) as e:
+            print(f"[DEBUG] -> FAILED with error: {e}")
+
+    print(f"\n--- [DEBUG] Entity Initialization Complete ---")
+    print(f"[DEBUG] Final 'entity_sprites' count: {len(entity_sprites)}")
+    print(f"[DEBUG] 'entity_sprites' content: {entity_sprites}\n")
+
+
+def update_entity_sprites() -> None:
+    """Update positions and rotations of all non-player entity sprites."""
+    if not entities:
+        return
+        
+    for entity_id, entity in entities.items():
+        if entity_id in entity_sprites: # This implicitly skips the player
+            sprite = entity_sprites[entity_id]
+            sprite.position = (round(entity.x * TILE_SIZE), round(entity.y * TILE_SIZE))
+            sprite.angle = entity.rot
 
 def should_update_viewport(viewport: 'Viewport') -> bool:
     """Check if we should update the viewport based on movement."""
@@ -140,9 +210,12 @@ def should_update_viewport(viewport: 'Viewport') -> bool:
     return True
 
 def update_visible_tiles(viewport: 'Viewport') -> None:
-    """Update which tiles are visible based on the current viewport."""
+    """Update which tiles and entities are visible based on the current viewport."""
     global active_sprites, _visible_tiles, _last_camera_pos
     
+    # First, update all non-player entity sprite data (position, rotation)
+    update_entity_sprites()
+
     # Only update if necessary
     if not should_update_viewport(viewport):
         return
@@ -150,14 +223,14 @@ def update_visible_tiles(viewport: 'Viewport') -> None:
     # Update camera position
     current_camera_pos = (viewport.left, viewport.bottom)
     camera_moved = (_last_camera_pos[0] != current_camera_pos[0] or 
-                   _last_camera_pos[1] != current_camera_pos[1])
+                    _last_camera_pos[1] != current_camera_pos[1])
     _last_camera_pos = current_camera_pos
     
     # Calculate visible tile range with padding
-    min_x = int((viewport.left - TILE_SIZE * VIEWPORT_PADDING) // TILE_SIZE)
-    max_x = int((viewport.right + TILE_SIZE * VIEWPORT_PADDING) // TILE_SIZE) + 1
-    min_y = int((viewport.bottom - TILE_SIZE * VIEWPORT_PADDING) // TILE_SIZE)
-    max_y = int((viewport.top + TILE_SIZE * VIEWPORT_PADDING) // TILE_SIZE) + 1
+    min_x_tile = int((viewport.left - TILE_SIZE * VIEWPORT_PADDING) // TILE_SIZE)
+    max_x_tile = int((viewport.right + TILE_SIZE * VIEWPORT_PADDING) // TILE_SIZE) + 1
+    min_y_tile = int((viewport.bottom - TILE_SIZE * VIEWPORT_PADDING) // TILE_SIZE)
+    max_y_tile = int((viewport.top + TILE_SIZE * VIEWPORT_PADDING) // TILE_SIZE) + 1
     
     # Only update if viewport has moved significantly or first run
     if not camera_moved and _visible_tiles:
@@ -166,13 +239,13 @@ def update_visible_tiles(viewport: 'Viewport') -> None:
     # Clear previous visible tiles
     _visible_tiles.clear()
     
-    # Add visible tiles to the active sprites
+    # Pre-allocate list for all visible sprites
+    visible_sprites = []
+    
+    # Add visible tiles to the list
     if tile_sprites:
-        # Pre-allocate list for visible sprites
-        visible_sprites = []
-        
-        for y in range(min_y, max_y + 1):
-            for x in range(min_x, max_x + 1):
+        for y in range(min_y_tile, max_y_tile + 1):
+            for x in range(min_x_tile, max_x_tile + 1):
                 try:
                     pos = (x, y)
                     sprite = tile_sprites.get(pos)
@@ -181,17 +254,35 @@ def update_visible_tiles(viewport: 'Viewport') -> None:
                         _visible_tiles.add(pos)
                 except (KeyError, TypeError):
                     continue
+
+    # Add visible entities to the list
+    visible_entity_count = 0
+    if entity_sprites:
+        min_x_px = viewport.left - TILE_SIZE
+        max_x_px = viewport.right + TILE_SIZE
+        min_y_px = viewport.bottom - TILE_SIZE
+        max_y_px = viewport.top + TILE_SIZE
         
-        # Update sprite list in one go
-        active_sprites.clear()
-        active_sprites.extend(visible_sprites)
+        # print(f"[DEBUG] Viewport Cull Box: X({min_x_px:.1f}, {max_x_px:.1f}), Y({min_y_px:.1f}, {max_y_px:.1f})")
+        for entity_id, sprite in entity_sprites.items():
+            is_visible = (min_x_px < sprite.center_x < max_x_px and
+                          min_y_px < sprite.center_y < max_y_px)
+            if is_visible:
+                visible_sprites.append(sprite)
+                visible_entity_count += 1
+            # else:
+            #     print(f"[DEBUG] Culling entity '{entity_id}' at pos ({sprite.center_x}, {sprite.center_y})")
+
+
+    # print(f"[DEBUG] Found {visible_entity_count} visible non-player entities.")
+    
+    # Update sprite list in one go
+    active_sprites.clear()
+    active_sprites.extend(visible_sprites)
     
     # Always add player last (on top)
     if player_sprite:
         active_sprites.append(player_sprite)
-    
-    # Spatial hash is automatically updated when sprites are added/removed
-    # No need to manually update it
 
 def draw_map(window) -> None:
     """Update and draw the visible portion of the map."""
@@ -289,4 +380,5 @@ def initialize_renderer() -> None:
     if not _initialized:
         preload_textures()
         init_map()
+        init_entities() # Initialize entity sprites
         _initialized = True
