@@ -7,3 +7,12 @@ cheese:
   wall: true
   name: "Cheese"
   description: "A delicious food" 
+player:
+  type: entity
+  subtype: character
+  texture: "player/player.png"
+  can_drag: false
+  inventory: false
+  wall: true
+  name: "player"
+  description: "player" 
