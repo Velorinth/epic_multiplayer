@@ -12,6 +12,7 @@ class Entity:
         self.dx = 0
         self.dy = 0
         self.dr = 0
+        self.sprite = None
 
         print(self.id)
         print(self.params)
@@ -24,7 +25,6 @@ class Entity:
         self.x += self.dx   
         self.y += self.dy
         self.rot += self.dr
-        print()
 
 def get_tile_map():
     return tile_map 

@@ -6,6 +6,8 @@ from loader.content import get_object_properties as get_content
 from dataclasses import dataclass
 from networking.main import get_tile_map, entities
 
+_debug_draw_hitboxes = False
+
 # Constants
 TILE_SIZE = 48
 VIEWPORT_PADDING = 2  # Slightly increased padding to reduce updates when moving
@@ -103,6 +105,7 @@ def init_map() -> None:
     # Check if map data is available
     if 'layout' not in tile_map or 'tiles' not in tile_map['layout']:
         print("Warning: Map data not available for initialization")
+        print(tile_map)
         raise "nah"
     
     map_data = tile_map
@@ -136,46 +139,33 @@ def init_map() -> None:
             continue
 
 def init_entities() -> None:
-    """Initialize sprites for all non-player entities."""
+    """Initialize sprites for ALL entities, including the player."""
     global entity_sprites
     entity_sprites.clear()
     
-    print("\n--- [DEBUG] Initializing Entities ---")
-    if not entities:
-        print("[DEBUG] 'entities' dictionary is empty or None. No entities to initialize.")
-        return
-    
-    print(f"[DEBUG] Found {len(entities)} total entities. Content: {entities}")
+    if not entities: return
 
     for entity_id, entity in entities.items():
-        print(f"\n[DEBUG] Processing entity_id: '{entity_id}', proto: '{entity.proto}'")
-        # Player is handled separately by draw_player, so we skip it here
-        if entity.proto == 'player':
-            print("[DEBUG] -> Skipping player entity.")
-            continue
-        
         try:
             props = get_content(entity.proto)
-            if not props or 'texture' not in props:
-                print("[DEBUG] -> SKIPPED: No properties or no 'texture' in properties.")
-                continue
+            if not props or 'texture' not in props: continue
             
             texture_name = props["texture"]
-            print(f"[DEBUG] -> Found texture name: '{texture_name}'")
-            if texture_name not in loaded_textures:
-                print(f"[DEBUG] -> SKIPPED: Texture '{texture_name}' not in 'loaded_textures'.")
-                continue
+            if texture_name not in loaded_textures: continue
             
             texture = loaded_textures[texture_name]
-            sprite = arcade.Sprite(texture)
+            # Use the "Detailed" algorithm for more accurate hitboxes
+            sprite = arcade.Sprite(texture, hit_box_algorithm="Detailed")
             sprite.scale = TILE_SIZE / max(texture.width, texture.height)
+            # Entity x,y are grid coordinates, convert to pixel for sprite
             sprite.position = (round(entity.x * TILE_SIZE), round(entity.y * TILE_SIZE))
             sprite.angle = entity.rot
             
+            # Store sprite in dict AND attach it to the entity object itself
             entity_sprites[entity_id] = sprite
-            print(f"[DEBUG] -> SUCCESS: Created sprite at position {sprite.position}")
+            entity.sprite = sprite
         except (KeyError, TypeError) as e:
-            print(f"[DEBUG] -> FAILED with error: {e}")
+            print(f"Warning: Error initializing sprite for entity '{entity_id}': {e}")
 
     print(f"\n--- [DEBUG] Entity Initialization Complete ---")
     print(f"[DEBUG] Final 'entity_sprites' count: {len(entity_sprites)}")
@@ -279,10 +269,6 @@ def update_visible_tiles(viewport: 'Viewport') -> None:
     # Update sprite list in one go
     active_sprites.clear()
     active_sprites.extend(visible_sprites)
-    
-    # Always add player last (on top)
-    if player_sprite:
-        active_sprites.append(player_sprite)
 
 def draw_map(window) -> None:
     """Update and draw the visible portion of the map."""
@@ -321,14 +307,27 @@ def update_camera_position(camera_x: float, camera_y: float, player) -> None:
 # Cache the text object for better performance
 _debug_text = None
 
+def toggle_hitbox_drawing():
+    """Flips the debug flag for drawing hitboxes."""
+    global _debug_draw_hitboxes
+    _debug_draw_hitboxes = not _debug_draw_hitboxes
+    print(f"Hitbox drawing {'ENABLED' if _debug_draw_hitboxes else 'DISABLED'}")
+
 def draw() -> None:
     """Draw all active sprites."""
     global _debug_text
     
     # Draw all sprites in one batch
     if active_sprites:
-        # Use draw_hit_boxes=False for better performance if hitboxes aren't needed
-        active_sprites.draw(filter=None, pixelated=True)
+        active_sprites.draw(
+            filter=None, 
+            pixelated=True
+        )
+        
+        # --- THIS IS THE FIX ---
+        # If the debug flag is on, draw the hitboxes separately.
+        if _debug_draw_hitboxes:
+            active_sprites.draw_hit_boxes(color=arcade.color.BLUE, line_thickness=2)
     
     # Only update debug text periodically
     current_time = time.time()
@@ -362,15 +361,19 @@ def draw_player(player) -> None:
                 return
                 
             texture = loaded_textures[texture_name]
-            player.sprite = arcade.Sprite(texture)
+            
+            # --- THIS IS THE FIX ---
+            # Use the "Detailed" algorithm to create a hitbox that fits the visible pixels, ignoring transparency.
+            player.sprite = arcade.Sprite(texture, hit_box_algorithm="Detailed")
+            
             player.sprite.scale = TILE_SIZE / max(texture.width, texture.height)
             player_sprite = player.sprite
         
+        # This part remains the same
         if hasattr(player, 'sprite') and player.sprite is not None:
             player.sprite.position = (player.x, player.y)
     except Exception as e:
         print(f"Error initializing/updating player sprite: {e}")
-
 # Initialize the renderer
 _initialized = False
 

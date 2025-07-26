@@ -70,7 +70,7 @@ class GameWindow(arcade.Window):
         self.dt = 0
         
         #time.sleep(2)
-        ent = Entity(id=67786767, params=get_object_properties("cheese"), proto="cheese",x=0.2)
+        ent = Entity(id=67786767, params=get_object_properties("cheese"), proto="player",x=1.2,rot=0)
         print(ent)
         entities[ent.id] = ent
         # Initialize the renderer after content is loaded
@@ -124,7 +124,8 @@ class GameWindow(arcade.Window):
     def on_update(self, delta_time):
         """Update function"""
         self.dt = delta_time
-        self.player.key_movement(dt=self.dt)
+        self.player.on_update(self.dt)
+        #self.player.key_movement(dt=self.dt)
         # Update camera position
         player_pos = self.player.get_position()
         self.camera.position = player_pos
