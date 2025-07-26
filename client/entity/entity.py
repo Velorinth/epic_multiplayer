@@ -30,4 +30,8 @@ def get_tile_map():
     return tile_map 
 
 def get_entities():
-    return entities
+    return entities 
+
+def update_entities():
+    for entity in entities.values():
+        entity.update()

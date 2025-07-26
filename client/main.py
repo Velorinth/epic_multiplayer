@@ -16,7 +16,7 @@ from render.renderer import draw, draw_map, update_camera_position, draw_player,
 from game.player import Player
 from game.inventory import Inventory
 from game.music import MusicPlayer
-from entity.entity import Entity
+from entity.entity import Entity, update_entities
 
 # Change working directory to project root
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -129,7 +129,8 @@ class GameWindow(arcade.Window):
         player_pos = self.player.get_position()
         self.camera.position = player_pos
         update_camera_position(player_pos[0], player_pos[1], self.player)
-        
+        update_entities()
+
 
 
     def on_key_press(self, symbol, modifiers):
