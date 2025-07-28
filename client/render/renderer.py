@@ -106,7 +106,7 @@ def init_map() -> None:
     if 'layout' not in tile_map or 'tiles' not in tile_map['layout']:
         print("Warning: Map data not available for initialization")
         print(tile_map)
-        raise "nah"
+        raise RuntimeError("Map data not available for initialization")
     
     map_data = tile_map
     
