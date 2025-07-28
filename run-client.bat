@@ -1,2 +1,2 @@
 cd client
-py main.py
+python main.py
