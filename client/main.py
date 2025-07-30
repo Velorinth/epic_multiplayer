@@ -1,5 +1,6 @@
 import arcade
 from arcade.camera import Camera2D
+import arcade.gui
 import os
 import time
 import threading
@@ -11,6 +12,7 @@ from game.player import Player
 from game.inventory import Inventory
 from game.music import MusicPlayer
 from entity.entity import Entity, update_entities
+from debug.console import DebugConsole
 
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -25,11 +27,12 @@ class GameWindow(arcade.Window):
         self.mouse_y = 0
         self.camera = Camera2D()
         self.gui_camera = Camera2D()
-        
+        self.ui_manager = arcade.gui.UIManager()
+        self.ui_manager.enable()
         self.player = Player()
-        
         self.inventory = Inventory()
         self.music_player = MusicPlayer()
+        self.console = DebugConsole(self.player, self.inventory, self.ui_manager)
 
         self.network_thread = threading.Thread(
             target=start_client, args=(self.player,), daemon=True
@@ -65,12 +68,12 @@ class GameWindow(arcade.Window):
         
         self.gui_camera.use()
         self.inventory.draw(self.width, self.height, self.mouse_x, self.mouse_y)
-
+        self.console.draw(self.width, self.height)
+        self.ui_manager.draw()    
     def on_update(self, delta_time: float):
         initialize_renderer()
         
         self.player.on_update(delta_time)
-        
         update_entities()
 
         # Only move the camera if the player is fully linked and ready.
@@ -89,23 +92,24 @@ class GameWindow(arcade.Window):
         self.gui_camera.viewport_width = width
         self.gui_camera.viewport_height = height
 
-    def on_key_press(self, symbol, modifiers):
-        self.player.on_key_press_player(symbol, modifiers)
-        self.inventory.on_key_press_inventory(symbol, modifiers)
-
-    def on_key_release(self, symbol, modifiers):
-        self.player.on_key_release_player(symbol, modifiers)
+    def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
+        self.mouse_x = x; self.mouse_y = y
+        if not self.console.is_open:
+            self.inventory.on_mouse_motion(x, y, dx, dy)
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
-        self.inventory.on_mouse_press(x, y, button, modifiers)
-        print(entities)
+        if not self.console.is_open:
+            self.inventory.on_mouse_press(x, y, button, modifiers)
 
-    def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
-        """Called when the user moves the mouse."""
-        self.mouse_x = x
-        self.mouse_y = y
-        self.inventory.on_mouse_motion(x, y, dx, dy)
+    def on_key_press(self, symbol, modifiers):
+        self.console.on_key_press(symbol)
 
+        if not self.console.is_open:
+            self.player.on_key_press_player(symbol, modifiers)
+            self.inventory.on_key_press_inventory(symbol, modifiers)
+    def on_key_release(self, symbol, modifiers):
+        if not self.console.is_open:
+            self.player.on_key_release_player(symbol, modifiers)
 if __name__ == "__main__":
     window = GameWindow(800, 600, "Epic Multiplayer")
     arcade.run()
