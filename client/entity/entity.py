@@ -13,18 +13,19 @@ class Entity:
         self.dy = 0
         self.dr = 0
         self.sprite = None
-
-        print(self.id)
-        print(self.params)
+        self.draw = True
+        self.inventory_id = None
+        self.should_update = True
 
     def set_position(self, x, y):
         self.x = x
         self.y = y
     
     def update(self):
-        self.x += self.dx   
-        self.y += self.dy
-        self.rot += self.dr
+        if self.should_update == True:
+            self.x += self.dx  
+            self.y += self.dy
+            self.rot += self.dr
 
 def get_tile_map():
     return tile_map 

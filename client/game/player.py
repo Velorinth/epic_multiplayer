@@ -76,16 +76,13 @@ class Player:
         # After all physics, update the read-only coordinates
         self.x = self.entity.sprite.center_x
         self.y = self.entity.sprite.center_y
-        
     def process_movement(self, delta_time: float):
         if not self.entity or not self.entity.sprite: return
-
-        vx = 0; vy = 0
+        vx = 0; vy = 0 
         if self.keys['W']: vy += self.speed
         if self.keys['S']: vy -= self.speed
         if self.keys['A']: vx -= self.speed
         if self.keys['D']: vx += self.speed
-
         if vx != 0 and vy != 0:
             vx *= 0.7071; vy *= 0.7071
         

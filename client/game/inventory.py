@@ -1,188 +1,257 @@
 import arcade
-# from arcade.types import Rect # Not explicitly used, can be removed if Rect is not needed elsewhere
-# from loader.content import yml_content # Assuming this is used by get_content
-from loader.content import get_object_properties as get_content
+import collections
+import math
+from typing import Optional, List, Dict, Any
+from entity.entity import Entity
+
+from render.renderer import loaded_textures
+from networking.main import entities
 
 class Inventory:
-    # --- Constants for easy appearance tuning ---
-    ITEM_RECT_WIDTH = 150  # Increased width for potentially longer names
-    ITEM_RECT_HEIGHT = 25
-    ITEM_VERTICAL_SPACING = 30  # Center-to-center Y distance between items (includes margin)
-    ITEM_BG_COLOR = (50, 50, 50, 180) # Slightly more opaque
+    # --- UI Constants ---
+    SLOT_SIZE = 52
+    SLOT_MARGIN = 8
+    SPRITE_SCALE_FACTOR = 0.6
+    HOTBAR_SLOT_COUNT = 5
+    SLOT_BG_COLOR = (50, 50, 50, 180)
+    SLOT_HIGHLIGHT_COLOR = arcade.color.WHITE
+    
+    INV_WINDOW_COLOR = (30, 30, 30, 220)
+    INV_WINDOW_PADDING = 15
+    INV_COLS = 5
+    INV_MIN_ROWS = 3
+    
     TEXT_COLOR = arcade.color.WHITE
     FONT_SIZE = 12
-    # Offset for text from the bottom-left corner of its background rectangle
-    TEXT_X_OFFSET_IN_RECT = 5 
-    TEXT_Y_OFFSET_IN_RECT = (ITEM_RECT_HEIGHT - FONT_SIZE) / 2 # Vertically center text in rect
+    
+    TOOLTIP_COLOR = (0, 0, 0, 230)
+    TOOLTIP_WIDTH = 200
 
     def __init__(self):
-        self.items = []  # List of item keys/identifiers
-        self.items_text = {}  # Maps item key to its arcade.Text object
+        # The inventory's own master list of entity objects it contains.
+        self._master_item_list: list[Entity] = []
+
+        self.cursor_stack: list[Entity] = []
+        self.hotbar_slots: list[list[Entity]] = [[] for _ in range(self.HOTBAR_SLOT_COUNT)]
         
+        self.selected_hotbar_slot = 0
         self.is_open = False
-        
-        self.shape_list = arcade.shape_list.ShapeElementList()
-        
-        # --- State for performance optimization and click detection ---
-        self._needs_visual_rebuild = True # Flag to trigger regeneration of visual elements
-        self._last_screen_width = 0
-        self._last_screen_height = 0
-        self._clickable_areas = []  # Stores (left, bottom, width, height, item_original_index)
 
-    def add_item(self, item_key):
-        """Add an item to the inventory by its key."""
-        if item_key not in self.items:
-            self.items.append(item_key)
-            # Create text object for new item. Position will be set during visual rebuild.
-            item_name = "Unknown Item" # Default name
-            try:
-                content = get_content(item_key)
-                if content and 'name' in content:
-                    item_name = content['name']
-                else:
-                    print(f"Warning: No name found for item key '{item_key}' in content.")
-            except Exception as e:
-                print(f"Error fetching content for item '{item_key}': {e}")
+        self.cursor_sprite = arcade.Sprite()
+        self.cursor_sprite_list = arcade.SpriteList()
+        self.cursor_sprite_list.append(self.cursor_sprite)
 
-            self.items_text[item_key] = arcade.Text(
-                item_name,
-                0,  # Placeholder, actual position set in _rebuild_visuals
-                0,  # Placeholder
-                self.TEXT_COLOR,
-                self.FONT_SIZE
-            )
-            self._needs_visual_rebuild = True # Mark that visuals need updating
-    
-    def remove_item(self, item_key):
-        """Remove an item from the inventory by its key."""
-        if item_key in self.items:
-            self.items.remove(item_key)
-            if item_key in self.items_text:
-                del self.items_text[item_key]
-            self._needs_visual_rebuild = True # Mark that visuals need updating
+        self.hovered_item_stack: Optional[list[Entity]] = None
+        self.mouse_x, self.mouse_y = 0, 0
+        self._shape_list = arcade.shape_list.ShapeElementList()
+        self._sprite_list = arcade.SpriteList()
+        self._text_list = []
+        self._clickable_areas = {}
+        self._needs_rebuild = True
+        
+    def _get_entity_hash(self, entity: Entity) -> str:
+        param_string = str(sorted(entity.params.items()))
+        return f"{entity.proto}:{param_string}"
+
+    def _update_cursor_sprite(self):
+        texture_to_use = loaded_textures.get("ui/trans1.png")
+        if self.cursor_stack:
+            texture_name = self.cursor_stack[0].params.get("texture")
+            if texture_name and texture_name in loaded_textures:
+                texture_to_use = loaded_textures[texture_name]
+        
+        if texture_to_use:
+            self.cursor_sprite.texture = texture_to_use
+            self.cursor_sprite.width = self.SLOT_SIZE * self.SPRITE_SCALE_FACTOR * 1.5
+            self.cursor_sprite.height = self.SLOT_SIZE * self.SPRITE_SCALE_FACTOR * 1.5
         else:
-            print(f"Item '{item_key}' not found in inventory for removal.")
+            self.cursor_sprite.texture = None
+
+    def add_item(self, entity: Entity):
+        """Claims an entity by flagging it and adding it to the internal list."""
+        if not entity: return
+        entity.inventory_id = 1
+        entity.draw = False
+        self._master_item_list.append(entity)
+        self._needs_rebuild = True
+
+    def drop_stack(self, stack: list, player_entity: Entity):
+        """Drops a stack of items, removing them from inventory control."""
+        if not stack: return
+        
+        stack_ids = {id(item) for item in stack}
+        self._master_item_list = [item for item in self._master_item_list if id(item) not in stack_ids]
+
+        for item in stack:
+            item.inventory_id = None
+            item.draw = True
+            item.x = player_entity.x
+            item.y = player_entity.y
+        
+        stack.clear()
+        self._needs_rebuild = True
 
     def on_key_press_inventory(self, symbol, modifiers):
-        """Handle key press events relevant to the inventory (e.g., toggling)."""
         if symbol == arcade.key.TAB:
             self.is_open = not self.is_open
-            if self.is_open:
-                # When opening, always flag for a rebuild in case screen size changed
-                # or to ensure it's drawn correctly for the first time.
-                self._needs_visual_rebuild = True 
+            self._needs_rebuild = True
+        if arcade.key.KEY_1 <= symbol <= arcade.key.KEY_5:
+            self.selected_hotbar_slot = symbol - arcade.key.KEY_1
+            self._needs_rebuild = True
 
-    def _rebuild_visuals(self, screen_width, screen_height):
-        """
-        Private method. Recreates background shapes, updates text positions, 
-        and stores clickable areas. Called only when necessary.
-        """
-        self.shape_list.clear()
-        self._clickable_areas.clear()
-
-        if not self.items:
-            self._needs_visual_rebuild = False
-            self._last_screen_width = screen_width
-            self._last_screen_height = screen_height
-            return
-
-        center_x = screen_width / 2
-        num_items = len(self.items)
-
-        # Calculate the Y coordinate for the center of the *first* (bottom-most) item
-        # to center the entire list vertically.
-        # Total height spanned by item centers: (num_items - 1) * ITEM_VERTICAL_SPACING
-        total_list_centers_span = (num_items - 1) * self.ITEM_VERTICAL_SPACING
-        first_item_center_y = (screen_height / 2) - (total_list_centers_span / 2)
-
-        current_item_center_y = first_item_center_y
-
-        for idx, item_key in enumerate(self.items):
-            # Create item background shape
-            item_bg = arcade.shape_list.create_rectangle_filled(
-                center_x,
-                current_item_center_y,
-                self.ITEM_RECT_WIDTH,
-                self.ITEM_RECT_HEIGHT,
-                self.ITEM_BG_COLOR
-            )
-            self.shape_list.append(item_bg)
-            
-            # Calculate rectangle's bottom-left for positioning text and click area
-            rect_left = center_x - self.ITEM_RECT_WIDTH / 2
-            rect_bottom = current_item_center_y - self.ITEM_RECT_HEIGHT / 2
-
-            # Store clickable area: (left, bottom, width, height, original_item_index)
-            self._clickable_areas.append(
-                (rect_left, rect_bottom, self.ITEM_RECT_WIDTH, self.ITEM_RECT_HEIGHT, idx)
-            )
-            
-            # Update text object's position
-            if item_key in self.items_text:
-                text_obj = self.items_text[item_key]
-                text_obj.position = (
-                    rect_left + self.TEXT_X_OFFSET_IN_RECT,
-                    rect_bottom + self.TEXT_Y_OFFSET_IN_RECT
-                )
-                # Ensure text properties if they might change or for consistency
-                text_obj.color = self.TEXT_COLOR
-                text_obj.font_size = self.FONT_SIZE
-            else:
-                # This should ideally not happen if add_item and remove_item are used correctly
-                print(f"Warning: Text object for item key '{item_key}' not found during visual rebuild.")
-
-            current_item_center_y += self.ITEM_VERTICAL_SPACING # Move to next item slot (upwards)
+    def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
+        self.mouse_x, self.mouse_y = x, y
+        self.hovered_item_stack = None
         
-        self._needs_visual_rebuild = False
-        self._last_screen_width = screen_width
-        self._last_screen_height = screen_height
-
-    def draw_inventory(self, screen_width, screen_height):
-        """Draw the inventory if it's open. Rebuilds visuals if needed."""
-        if not self.is_open:
-            return
-            
-        # Check if a visual rebuild is necessary
-        if (self._needs_visual_rebuild or 
-            self._last_screen_width != screen_width or
-            self._last_screen_height != screen_height):
-            self._rebuild_visuals(screen_width, screen_height)
-        
-        # Draw all background shapes (batched)
-        self.shape_list.draw()
-        
-        # Draw all text objects. Iterating self.items ensures draw order matches logical order.
-        for item_key in self.items:
-            if item_key in self.items_text:
-                self.items_text[item_key].draw()
+        current_areas = self._clickable_areas if self.is_open else {k: v for k, v in self._clickable_areas.items() if k[0] == 'hotbar'}
+        for area_id, area_rect in current_areas.items():
+            left, bottom, width, height = area_rect
+            if left < x < left + width and bottom < y < bottom + height:
+                area_type, data = area_id
+                if area_type == "hotbar" and self.hotbar_slots[data]:
+                    self.hovered_item_stack = self.hotbar_slots[data]
+                elif area_type == "inventory":
+                    grouped_items = self._get_grouped_items()
+                    if data < len(grouped_items):
+                        self.hovered_item_stack = grouped_items[list(grouped_items.keys())[data]]
+                break
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
-        """
-        Handles mouse clicks for inventory items. Call this from your game's main
-        on_mouse_press method when the inventory might be active.
+        clicked_area = None
+        for area_id, area_rect in self._clickable_areas.items():
+            left, bottom, width, height = area_rect
+            if left < x < left + width and bottom < y < bottom + height:
+                clicked_area = area_id; break
+        if not clicked_area: return
+
+        area_type, data = clicked_area
         
-        Returns:
-            int: The index of the clicked item in the self.items list.
-            None: If no item was clicked, inventory is closed, or not a left click.
-        """
-        if not self.is_open or button != arcade.MOUSE_BUTTON_LEFT:
-            return None # Inventory not open or not a left click
+        if area_type == "hotbar":
+            self._handle_hotbar_click(data, button)
+        elif area_type == "inventory" and self.is_open:
+            self._handle_inventory_click(data, button)
 
-        for r_x, r_y, r_width, r_height, item_original_idx in self._clickable_areas:
-            # Check if point (x,y) is within the rectangle defined by (r_x, r_y, r_width, r_height)
-            if (r_x <= x <= r_x + r_width) and (r_y <= y <= r_y + r_height):
-                clicked_item_key = self.items[item_original_idx]
-                item_name = "N/A"
-                if clicked_item_key in self.items_text:
-                    item_name = self.items_text[clicked_item_key].text
+        self._update_cursor_sprite()
+        self._needs_rebuild = True
+    
+    def _handle_hotbar_click(self, slot_index: int, button: int):
+        target_stack = self.hotbar_slots[slot_index]
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            # Check if both cursor and target stacks have items and are of the same type
+            if self.cursor_stack and target_stack and self._get_entity_hash(self.cursor_stack[0]) == self._get_entity_hash(target_stack[0]):
+                # If they are the same, stack them
+                target_stack.extend(self.cursor_stack)
+                self.cursor_stack.clear()
+            else:
+                # Otherwise, swap them
+                self.cursor_stack, self.hotbar_slots[slot_index] = target_stack, self.cursor_stack
+        elif button == arcade.MOUSE_BUTTON_RIGHT:
+            if self.cursor_stack and (not target_stack or self._get_entity_hash(target_stack[0]) == self._get_entity_hash(self.cursor_stack[0])):
+                target_stack.append(self.cursor_stack.pop())
+            elif not self.cursor_stack and target_stack:
+                split_amount = math.ceil(len(target_stack) / 2)
+                self.cursor_stack.extend(target_stack[split_amount:])
+                del target_stack[split_amount:]
 
-                print(f"Clicked inventory item at index: {item_original_idx}, Key: '{clicked_item_key}', Name: '{item_name}'")
-                
-                # --- Example: Placeholder for using/interacting with the item ---
-                # self.use_item(item_original_idx) 
-                # self.is_open = False # Optionally close inventory after click
-                # self._needs_visual_rebuild = True # If closing, may want to mark for rebuild
-                
-                return item_original_idx # Return the index of the clicked item
+    def _handle_inventory_click(self, slot_index: int, button: int):
+        grouped_items = self._get_grouped_items()
+        item_stacks = list(grouped_items.values())
+        if slot_index < len(item_stacks):
+            source_stack = item_stacks[slot_index]
+            if button == arcade.MOUSE_BUTTON_LEFT:
+                # Check if both cursor and source stacks have items and are of the same type
+                if self.cursor_stack and source_stack and self._get_entity_hash(self.cursor_stack[0]) == self._get_entity_hash(source_stack[0]):
+                    # If same type, add cursor items to master list and clear cursor
+                    self._master_item_list.extend(self.cursor_stack)
+                    self.cursor_stack.clear()
+                else:
+                    # Otherwise, perform the swap
+                    source_ids = {id(item) for item in source_stack}
+                    self._master_item_list = [item for item in self._master_item_list if id(item) not in source_ids]
+                    self._master_item_list.extend(self.cursor_stack)
+                    self.cursor_stack = source_stack
+            elif button == arcade.MOUSE_BUTTON_RIGHT:
+                if not self.cursor_stack and source_stack:
+                    split_amount = math.ceil(len(source_stack) / 2)
+                    items_to_move = source_stack[:split_amount]
+                    self.cursor_stack.extend(items_to_move)
+                    for item in items_to_move:
+                        self._master_item_list.remove(item)
+        elif self.cursor_stack:
+            if button == arcade.MOUSE_BUTTON_LEFT:
+                self._master_item_list.extend(self.cursor_stack)
+                self.cursor_stack.clear()
+            elif button == arcade.MOUSE_BUTTON_RIGHT:
+                if self.cursor_stack: self._master_item_list.append(self.cursor_stack.pop())
+    def _get_grouped_items(self) -> dict:
+        grouped = collections.defaultdict(list)
+        checked_out_ids = {id(item) for stack in self.hotbar_slots for item in stack}
+        if self.cursor_stack:
+            checked_out_ids.update(id(item) for item in self.cursor_stack)
+        for item in self._master_item_list:
+            if id(item) not in checked_out_ids:
+                grouped[self._get_entity_hash(item)].append(item)
+        return grouped
 
-        return None # Click was not on any inventory item
+    def _rebuild_visuals(self, screen_width, screen_height):
+        self._shape_list, self._sprite_list, self._text_list, self._clickable_areas = arcade.shape_list.ShapeElementList(), arcade.SpriteList(), [], {}
+        grouped_items = self._get_grouped_items()
+        hotbar_width = (self.SLOT_SIZE * self.HOTBAR_SLOT_COUNT) + (self.SLOT_MARGIN * (self.HOTBAR_SLOT_COUNT - 1))
+        center_x_start, center_y = (screen_width / 2) - (hotbar_width / 2) + (self.SLOT_SIZE / 2), self.SLOT_SIZE / 2 + self.SLOT_MARGIN
+        for i in range(self.HOTBAR_SLOT_COUNT):
+            center_x = center_x_start + i * (self.SLOT_SIZE + self.SLOT_MARGIN)
+            self._shape_list.append(arcade.shape_list.create_rectangle_filled(center_x, center_y, self.SLOT_SIZE, self.SLOT_SIZE, self.SLOT_BG_COLOR))
+            if i == self.selected_hotbar_slot: self._shape_list.append(arcade.shape_list.create_rectangle_outline(center_x, center_y, self.SLOT_SIZE, self.SLOT_SIZE, self.SLOT_HIGHLIGHT_COLOR, 2))
+            self._clickable_areas[("hotbar", i)] = (center_x - self.SLOT_SIZE/2, center_y - self.SLOT_SIZE/2, self.SLOT_SIZE, self.SLOT_SIZE)
+            stack = self.hotbar_slots[i]
+            if stack:
+                item, count = stack[0], len(stack)
+                if item.params.get("texture") in loaded_textures:
+                    sprite = arcade.Sprite(loaded_textures[item.params["texture"]]); sprite.scale = (self.SLOT_SIZE * self.SPRITE_SCALE_FACTOR) / sprite.width; sprite.position = (center_x, center_y); self._sprite_list.append(sprite)
+                if count > 1: self._text_list.append(arcade.Text(str(count), center_x + self.SLOT_SIZE/2 - 8, center_y - self.SLOT_SIZE/2 + 5, self.TEXT_COLOR, self.FONT_SIZE, anchor_x="center"))
+        if self.is_open:
+            item_stacks = list(grouped_items.values())
+            num_rows = max(self.INV_MIN_ROWS, math.ceil(len(item_stacks) / self.INV_COLS)) if item_stacks else self.INV_MIN_ROWS
+            window_width, window_height = (self.SLOT_SIZE * self.INV_COLS) + (self.SLOT_MARGIN * (self.INV_COLS + 1)), (self.SLOT_SIZE * num_rows) + (self.SLOT_MARGIN * (num_rows + 1))
+            win_center_x, win_center_y = screen_width / 2, screen_height / 2
+            self._shape_list.append(arcade.shape_list.create_rectangle_filled(win_center_x, win_center_y, window_width, window_height, self.INV_WINDOW_COLOR))
+            for i in range(num_rows * self.INV_COLS):
+                row, col = divmod(i, self.INV_COLS)
+                slot_center_x, slot_center_y = win_center_x - (window_width/2) + self.SLOT_MARGIN + self.SLOT_SIZE/2 + col * (self.SLOT_SIZE + self.SLOT_MARGIN), win_center_y + (window_height/2) - self.SLOT_MARGIN - self.SLOT_SIZE/2 - row * (self.SLOT_SIZE + self.SLOT_MARGIN)
+                self._shape_list.append(arcade.shape_list.create_rectangle_filled(slot_center_x, slot_center_y, self.SLOT_SIZE, self.SLOT_SIZE, self.SLOT_BG_COLOR))
+                self._clickable_areas[("inventory", i)] = (slot_center_x - self.SLOT_SIZE/2, slot_center_y - self.SLOT_SIZE/2, self.SLOT_SIZE, self.SLOT_SIZE)
+                if i < len(item_stacks):
+                    item, count = item_stacks[i][0], len(item_stacks[i])
+                    if item.params.get("texture") in loaded_textures:
+                        sprite = arcade.Sprite(loaded_textures[item.params["texture"]]); sprite.scale = (self.SLOT_SIZE * self.SPRITE_SCALE_FACTOR) / sprite.width; sprite.position = (slot_center_x, slot_center_y); self._sprite_list.append(sprite)
+                    if count > 1: self._text_list.append(arcade.Text(str(count), slot_center_x + self.SLOT_SIZE/2 - 8, slot_center_y - self.SLOT_SIZE/2 + 5, self.TEXT_COLOR, self.FONT_SIZE, anchor_x="center"))
+        self._needs_rebuild = False
+
+    def draw(self, screen_width, screen_height, mouse_x, mouse_y):
+        if self._needs_rebuild: self._rebuild_visuals(screen_width, screen_height)
+        self._shape_list.draw(); self._sprite_list.draw()
+        for text_object in self._text_list: text_object.draw()
+        
+        if self.cursor_stack and self.cursor_sprite.texture:
+            self.cursor_sprite.position = (mouse_x, mouse_y)
+            self.cursor_sprite_list.draw()
+            if len(self.cursor_stack) > 1:
+                # CORRECTED: Use positional arguments for text, x, and y.
+                cursor_count_text = arcade.Text(
+                    str(len(self.cursor_stack)),
+                    mouse_x + 15,
+                    mouse_y - 15,
+                    color=self.TEXT_COLOR,
+                    font_size=self.FONT_SIZE,
+                    anchor_x="center"
+                )
+                cursor_count_text.draw()
+
+        if self.hovered_item_stack:
+            item, name, desc = self.hovered_item_stack[0], self.hovered_item_stack[0].params.get("name", "Unknown"), self.hovered_item_stack[0].params.get("description", "")
+            # This tooltip creation already uses the correct format
+            text_obj = arcade.Text(f"{name}\n{desc}", 0, 0, self.TEXT_COLOR, self.FONT_SIZE, multiline=True, width=self.TOOLTIP_WIDTH)
+            box_width, box_height = text_obj.content_width + 20, text_obj.content_height + 20
+            box_x, box_y = mouse_x + box_width/2 + 10, mouse_y - box_height/2 - 10
+            tooltip_shapes = arcade.shape_list.ShapeElementList(); tooltip_bg = arcade.shape_list.create_rectangle_filled(box_x, box_y, box_width, box_height, self.TOOLTIP_COLOR); tooltip_shapes.append(tooltip_bg); tooltip_shapes.draw()
+            text_obj.position = (box_x - box_width/2 + 10, box_y + box_height/2 - text_obj.content_height/2 + self.FONT_SIZE/2); text_obj.draw()

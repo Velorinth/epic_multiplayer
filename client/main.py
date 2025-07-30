@@ -21,12 +21,16 @@ class GameWindow(arcade.Window):
         
         load_content()
         arcade.set_background_color(arcade.color.BLACK)
-        
+        self.mouse_x = 0
+        self.mouse_y = 0
         self.camera = Camera2D()
         self.gui_camera = Camera2D()
         
         self.player = Player()
         
+        self.inventory = Inventory()
+        self.music_player = MusicPlayer()
+
         self.network_thread = threading.Thread(
             target=start_client, args=(self.player,), daemon=True
         )
@@ -34,13 +38,23 @@ class GameWindow(arcade.Window):
 
         # Test Entity for offline development
         if not any(e.proto == 'player' for e in entities.values()):
-            ent = Entity(id=67786767, proto="player", x=0, y=0)
+            ent = Entity(id=1, proto="player", x=0, y=0)
             entities[ent.id] = ent
-
-        self.inventory = Inventory()
-        self.music_player = MusicPlayer()
+        item1 = Entity(id=2, proto="cheese", x=10, y=0)
+        entities[item1.id] = item1
+        self.inventory.add_item(item1)
+        item1 = Entity(id=3, proto="cheese", x=10, y=2)
+        entities[item1.id] = item1
+        self.inventory.add_item(item1)
+        item1 = Entity(id=4, proto="dirt", x=10, y=0)
+        entities[item1.id] = item1
+        self.inventory.add_item(item1)
+        item1 = Entity(id=5, proto="dirt", x=10, y=2)
+        entities[item1.id] = item1
+        self.inventory.add_item(item1)
         self.music_player.load_song()
         self.music_player.play()
+        print(entities)
 
     def on_draw(self):
         self.clear()
@@ -50,7 +64,7 @@ class GameWindow(arcade.Window):
         draw()
         
         self.gui_camera.use()
-        self.inventory.draw_inventory(self.width, self.height)
+        self.inventory.draw(self.width, self.height, self.mouse_x, self.mouse_y)
 
     def on_update(self, delta_time: float):
         initialize_renderer()
@@ -84,6 +98,13 @@ class GameWindow(arcade.Window):
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
         self.inventory.on_mouse_press(x, y, button, modifiers)
+        print(entities)
+
+    def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
+        """Called when the user moves the mouse."""
+        self.mouse_x = x
+        self.mouse_y = y
+        self.inventory.on_mouse_motion(x, y, dx, dy)
 
 if __name__ == "__main__":
     window = GameWindow(800, 600, "Epic Multiplayer")
