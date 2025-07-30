@@ -1,16 +1,15 @@
-commands:
-  help-cmd:
-    name: "help-cmd"
-    type: cmd
-    description: "Show available commands"
-    function: "help_cmd"
-  echo-cmd:
-    name: "echo-cmd"
-    type: cmd
-    description: "Echo back the input"
-    function: "echo_cmd"
-  fps-cmd:
-    name: "fps-cmd"
-    type: cmd
-    description: "Toggle FPS counter display"
-    function: "fps_cmd" 
+help-cmd:
+  name: "help-cmd"
+  type: cmd
+  description: "Show available commands"
+  function: "help_cmd"
+echo-cmd:
+  name: "echo-cmd"
+  type: cmd
+  description: "Echo back the input"
+  function: "echo_cmd"
+fps-cmd:
+  name: "fps-cmd"
+  type: cmd
+  description: "Toggle FPS counter display"
+  function: "fps_cmd" 
