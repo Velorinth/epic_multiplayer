@@ -86,35 +86,20 @@ def load_content():
     #print(loader())
     return loader()
 
-def update_prototype(prototype_name, updates):
-    """
-    Update a prototype in memory without modifying the original file.
+def get_objects_by_property(prop_key: str, prop_value) -> list:
+    found_objects = []
     
-    Args:
-        prototype_name (str): The exact name of the prototype to update
-        updates (dict): Dictionary of key-value pairs to update in the prototype
-        
-    Returns:
-        bool: True if the prototype was found and updated, False otherwise
-    """
-    # Clear the cache for this prototype if it exists
-    _content_cache.pop(prototype_name, None)
-    
-    # Search through all loaded content to find the prototype
-    for content in yml_content.values():
-        if not isinstance(content, dict):
-            continue
+    def search_recursive(d):
+        for key, value in d.items():
+            if isinstance(value, dict):
+                # Check if the dictionary itself is the object we want
+                if value.get(prop_key) == prop_value:
+                    found_objects.append(value)
+                # Continue searching deeper
+                search_recursive(value)
+
+    for category in yml_content.values():
+        if isinstance(category, dict):
+            search_recursive(category)
             
-        # Check if this is the prototype we're looking for
-        if prototype_name in content:
-            # Update the prototype with new values
-            content[prototype_name].update(updates)
-            return True
-            
-        # Recursively search through nested dictionaries
-        for value in content.values():
-            if isinstance(value, dict) and prototype_name in value:
-                value[prototype_name].update(updates)
-                return True
-                
-    return False
+    return found_objects
