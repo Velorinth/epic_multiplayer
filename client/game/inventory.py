@@ -193,40 +193,125 @@ class Inventory:
                 grouped[self._get_entity_hash(item)].append(item)
         return grouped
 
-    def _rebuild_visuals(self, screen_width, screen_height):
-        self._shape_list, self._sprite_list, self._text_list, self._clickable_areas = arcade.shape_list.ShapeElementList(), arcade.SpriteList(), [], {}
-        grouped_items = self._get_grouped_items()
+    def _rebuild_visuals(self, screen_width: int, screen_height: int):
+        """
+        Clears and rebuilds all visual elements for the inventory and hotbar UI.
+        """
+        # 1. Initialize fresh lists to hold all visual components
+        self._shape_list = arcade.shape_list.ShapeElementList()
+        self._sprite_list = arcade.SpriteList()
+        self._text_list = []
+        self._clickable_areas = {}
+        
+        # --- Rebuild Hotbar ---
+        # ----------------------
+        
+        # Calculate dimensions and starting position for the hotbar
         hotbar_width = (self.SLOT_SIZE * self.HOTBAR_SLOT_COUNT) + (self.SLOT_MARGIN * (self.HOTBAR_SLOT_COUNT - 1))
-        center_x_start, center_y = (screen_width / 2) - (hotbar_width / 2) + (self.SLOT_SIZE / 2), self.SLOT_SIZE / 2 + self.SLOT_MARGIN
+        hotbar_start_x = (screen_width / 2) - (hotbar_width / 2)
+        hotbar_center_y = self.SLOT_SIZE / 2 + self.SLOT_MARGIN
+        
+        # Draw each slot in the hotbar
         for i in range(self.HOTBAR_SLOT_COUNT):
-            center_x = center_x_start + i * (self.SLOT_SIZE + self.SLOT_MARGIN)
-            self._shape_list.append(arcade.shape_list.create_rectangle_filled(center_x, center_y, self.SLOT_SIZE, self.SLOT_SIZE, self.SLOT_BG_COLOR))
-            if i == self.selected_hotbar_slot: self._shape_list.append(arcade.shape_list.create_rectangle_outline(center_x, center_y, self.SLOT_SIZE, self.SLOT_SIZE, self.SLOT_HIGHLIGHT_COLOR, 2))
-            self._clickable_areas[("hotbar", i)] = (center_x - self.SLOT_SIZE/2, center_y - self.SLOT_SIZE/2, self.SLOT_SIZE, self.SLOT_SIZE)
+            # Calculate the center position of the current slot
+            center_x = hotbar_start_x + (self.SLOT_SIZE / 2) + i * (self.SLOT_SIZE + self.SLOT_MARGIN)
+            
+            # Draw the slot background
+            slot_bg = arcade.shape_list.create_rectangle_filled(center_x, hotbar_center_y, self.SLOT_SIZE, self.SLOT_SIZE, self.SLOT_BG_COLOR)
+            self._shape_list.append(slot_bg)
+            
+            # Add a highlight if this slot is currently selected
+            if i == self.selected_hotbar_slot:
+                highlight_border = arcade.shape_list.create_rectangle_outline(center_x, hotbar_center_y, self.SLOT_SIZE, self.SLOT_SIZE, self.SLOT_HIGHLIGHT_COLOR, 2)
+                self._shape_list.append(highlight_border)
+                
+            # Register the area for click detection
+            left = center_x - self.SLOT_SIZE / 2
+            bottom = hotbar_center_y - self.SLOT_SIZE / 2
+            self._clickable_areas[("hotbar", i)] = (left, bottom, self.SLOT_SIZE, self.SLOT_SIZE)
+            
+            # Draw the item sprite and count if the slot is not empty
             stack = self.hotbar_slots[i]
             if stack:
                 item, count = stack[0], len(stack)
-                if item.params.get("texture") in loaded_textures:
-                    sprite = arcade.Sprite(loaded_textures[item.params["texture"]]); sprite.scale = (self.SLOT_SIZE * self.SPRITE_SCALE_FACTOR) / sprite.width; sprite.position = (center_x, center_y); self._sprite_list.append(sprite)
-                if count > 1: self._text_list.append(arcade.Text(str(count), center_x + self.SLOT_SIZE/2 - 8, center_y - self.SLOT_SIZE/2 + 5, self.TEXT_COLOR, self.FONT_SIZE, anchor_x="center"))
+                
+                # Draw the item sprite
+                texture_name = item.params.get("texture")
+                if texture_name and texture_name in loaded_textures:
+                    sprite = arcade.Sprite(loaded_textures[texture_name])
+                    sprite.scale = (self.SLOT_SIZE * self.SPRITE_SCALE_FACTOR) / sprite.width
+                    sprite.position = (center_x, hotbar_center_y)
+                    self._sprite_list.append(sprite)
+                    
+                # Draw the stack count text if more than one item
+                if count > 1:
+                    text_x = center_x + self.SLOT_SIZE / 2 - 8
+                    text_y = hotbar_center_y - self.SLOT_SIZE / 2 + 5
+                    count_text = arcade.Text(str(count), text_x, text_y, self.TEXT_COLOR, self.FONT_SIZE, anchor_x="center")
+                    self._text_list.append(count_text)
+
+        # --- Rebuild Inventory Window (if open) ---
+        # ------------------------------------------
+        
         if self.is_open:
-            item_stacks = list(grouped_items.values())
-            num_rows = max(self.INV_MIN_ROWS, math.ceil(len(item_stacks) / self.INV_COLS)) if item_stacks else self.INV_MIN_ROWS
-            window_width, window_height = (self.SLOT_SIZE * self.INV_COLS) + (self.SLOT_MARGIN * (self.INV_COLS + 1)), (self.SLOT_SIZE * num_rows) + (self.SLOT_MARGIN * (num_rows + 1))
+            item_stacks = list(self._get_grouped_items().values())
+            
+            # Determine the number of rows needed to display all items
+            num_rows = self.INV_MIN_ROWS
+            if item_stacks:
+                num_rows = max(self.INV_MIN_ROWS, math.ceil(len(item_stacks) / self.INV_COLS))
+
+            # Calculate inventory window dimensions and center
+            window_width = (self.SLOT_SIZE * self.INV_COLS) + (self.SLOT_MARGIN * (self.INV_COLS + 1))
+            window_height = (self.SLOT_SIZE * num_rows) + (self.SLOT_MARGIN * (num_rows + 1))
             win_center_x, win_center_y = screen_width / 2, screen_height / 2
-            self._shape_list.append(arcade.shape_list.create_rectangle_filled(win_center_x, win_center_y, window_width, window_height, self.INV_WINDOW_COLOR))
+            
+            # Draw the background panel for the inventory
+            panel = arcade.shape_list.create_rectangle_filled(win_center_x, win_center_y, window_width, window_height, self.INV_WINDOW_COLOR)
+            self._shape_list.append(panel)
+            
+            # Calculate the starting position for the top-left slot
+            inv_start_x = win_center_x - (window_width / 2) + self.SLOT_MARGIN + (self.SLOT_SIZE / 2)
+            inv_start_y = win_center_y + (window_height / 2) - self.SLOT_MARGIN - (self.SLOT_SIZE / 2)
+            
+            # Draw the grid of inventory slots
             for i in range(num_rows * self.INV_COLS):
                 row, col = divmod(i, self.INV_COLS)
-                slot_center_x, slot_center_y = win_center_x - (window_width/2) + self.SLOT_MARGIN + self.SLOT_SIZE/2 + col * (self.SLOT_SIZE + self.SLOT_MARGIN), win_center_y + (window_height/2) - self.SLOT_MARGIN - self.SLOT_SIZE/2 - row * (self.SLOT_SIZE + self.SLOT_MARGIN)
-                self._shape_list.append(arcade.shape_list.create_rectangle_filled(slot_center_x, slot_center_y, self.SLOT_SIZE, self.SLOT_SIZE, self.SLOT_BG_COLOR))
-                self._clickable_areas[("inventory", i)] = (slot_center_x - self.SLOT_SIZE/2, slot_center_y - self.SLOT_SIZE/2, self.SLOT_SIZE, self.SLOT_SIZE)
+                
+                # Calculate the center of the current slot
+                center_x = inv_start_x + col * (self.SLOT_SIZE + self.SLOT_MARGIN)
+                center_y = inv_start_y - row * (self.SLOT_SIZE + self.SLOT_MARGIN)
+                
+                # Draw the slot background
+                slot_bg = arcade.shape_list.create_rectangle_filled(center_x, center_y, self.SLOT_SIZE, self.SLOT_SIZE, self.SLOT_BG_COLOR)
+                self._shape_list.append(slot_bg)
+                
+                # Register the area for click detection
+                left = center_x - self.SLOT_SIZE / 2
+                bottom = center_y - self.SLOT_SIZE / 2
+                self._clickable_areas[("inventory", i)] = (left, bottom, self.SLOT_SIZE, self.SLOT_SIZE)
+                
+                # If there's an item for this slot, draw it
                 if i < len(item_stacks):
                     item, count = item_stacks[i][0], len(item_stacks[i])
-                    if item.params.get("texture") in loaded_textures:
-                        sprite = arcade.Sprite(loaded_textures[item.params["texture"]]); sprite.scale = (self.SLOT_SIZE * self.SPRITE_SCALE_FACTOR) / sprite.width; sprite.position = (slot_center_x, slot_center_y); self._sprite_list.append(sprite)
-                    if count > 1: self._text_list.append(arcade.Text(str(count), slot_center_x + self.SLOT_SIZE/2 - 8, slot_center_y - self.SLOT_SIZE/2 + 5, self.TEXT_COLOR, self.FONT_SIZE, anchor_x="center"))
-        self._needs_rebuild = False
+                    
+                    # Draw the item sprite
+                    texture_name = item.params.get("texture")
+                    if texture_name and texture_name in loaded_textures:
+                        sprite = arcade.Sprite(loaded_textures[texture_name])
+                        sprite.scale = (self.SLOT_SIZE * self.SPRITE_SCALE_FACTOR) / sprite.width
+                        sprite.position = (center_x, center_y)
+                        self._sprite_list.append(sprite)
+                        
+                    # Draw the stack count text if more than one item
+                    if count > 1:
+                        text_x = center_x + self.SLOT_SIZE / 2 - 8
+                        text_y = center_y - self.SLOT_SIZE / 2 + 5
+                        count_text = arcade.Text(str(count), text_x, text_y, self.TEXT_COLOR, self.FONT_SIZE, anchor_x="center")
+                        self._text_list.append(count_text)
 
+        # 3. Flag that the visuals have been updated
+        self._needs_rebuild = True
     def draw(self, screen_width, screen_height, mouse_x, mouse_y):
         if self._needs_rebuild: self._rebuild_visuals(screen_width, screen_height)
         self._shape_list.draw(); self._sprite_list.draw()

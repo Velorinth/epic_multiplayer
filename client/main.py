@@ -16,11 +16,13 @@ from debug.console import DebugConsole
 
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+BASE_WIDTH = 960  # 20 tiles * 48 pixels/tile
+BASE_HEIGHT = 528 # 11 tiles * 48 pixels/tile
+
 class GameWindow(arcade.Window):
     def __init__(self, width, height, title):
         super().__init__(width, height, title, vsync=True, resizable=True)
         self.set_location(400, 200)
-        
         load_content()
         arcade.set_background_color(arcade.color.BLACK)
         self.mouse_x = 0
@@ -87,12 +89,14 @@ class GameWindow(arcade.Window):
             )
 
     def on_resize(self, width: int, height: int):
-        self.camera.viewport_width = width
-        self.camera.viewport_height = height
-        self.gui_camera.viewport_width = width
-        self.gui_camera.viewport_height = height
-
+        super().on_resize(width, height)
+        self.camera.match_window()
+        self.gui_camera.match_window()
+        scale_x = width / BASE_WIDTH
+        scale_y = height / BASE_HEIGHT
+        self.camera.zoom = max(scale_x, scale_y)
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
+        print(x,y)
         self.mouse_x = x; self.mouse_y = y
         if not self.console.is_open:
             self.inventory.on_mouse_motion(x, y, dx, dy)
