@@ -14,7 +14,7 @@ To run:
 cd {game install directory}
 . ./run-client.bat
 ```
-or open the bat file from mexplorer
+or open the bat file from explorer
 ## Contributing
 
 do anything but like describe the stuff you change in the pull request
