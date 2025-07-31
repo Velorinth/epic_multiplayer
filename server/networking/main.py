@@ -1,7 +1,7 @@
 import socket
 import threading
 from typing import Dict, Tuple
-from connection.logic import packet_handler
+from networking.logic import packet_handler
 from update.data import entities
 from loader.content import get_object_properties as get_content, yml_content
 import json
