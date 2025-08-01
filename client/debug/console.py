@@ -29,7 +29,7 @@ class DebugConsole:
         self.custom_commands = {}
         command_list = get_objects_by_property("type", "cmd")
         for command_data in command_list:
-            command_name = command_data.get('name')
+            command_name = command_data.get('command')
             if command_name:
                 self.custom_commands[command_name] = command_data
 
@@ -97,12 +97,9 @@ class DebugConsole:
         # Execute the actual command logic after handling the UI updates.
         parts = command_text.split()
         command_name = parts[0]
-        print(f"prts;{parts},cmd_name;{command_name}")
         if command_name in self.custom_commands:
-            print("custom")
             self.execute_custom_command(command_name, parts[1:])
         else:
-            print("elso")
             self.execute_python_command(command_text)
             
     def execute_custom_command(self, name, args):

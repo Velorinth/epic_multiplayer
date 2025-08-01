@@ -16,11 +16,13 @@ from debug.console import DebugConsole
 
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+BASE_WIDTH = 960  # 20 tiles * 48 pixels/tile
+BASE_HEIGHT = 528 # 11 tiles * 48 pixels/tile
+
 class GameWindow(arcade.Window):
     def __init__(self, width, height, title):
         super().__init__(width, height, title, vsync=True, resizable=True)
         self.set_location(400, 200)
-        
         load_content()
         arcade.set_background_color(arcade.color.BLACK)
         self.mouse_x = 0
@@ -87,11 +89,16 @@ class GameWindow(arcade.Window):
             )
 
     def on_resize(self, width: int, height: int):
-        self.camera.viewport_width = width
-        self.camera.viewport_height = height
-        self.gui_camera.viewport_width = width
-        self.gui_camera.viewport_height = height
-
+        super().on_resize(width, height)
+        self.camera.match_window()
+        self.gui_camera.match_window()
+        self.ui_manager.on_resize(width, height)
+        self.inventory._needs_rebuild = True
+        scale_x = width / BASE_WIDTH
+        scale_y = height / BASE_HEIGHT
+        self.camera.zoom = max(scale_x, scale_y)
+        self.gui_camera.match_window()
+        self.gui_camera.position = (self.width / 2, self.height / 2)
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
         self.mouse_x = x; self.mouse_y = y
         if not self.console.is_open:
@@ -107,9 +114,11 @@ class GameWindow(arcade.Window):
         if not self.console.is_open:
             self.player.on_key_press_player(symbol, modifiers)
             self.inventory.on_key_press_inventory(symbol, modifiers)
+            
     def on_key_release(self, symbol, modifiers):
         if not self.console.is_open:
             self.player.on_key_release_player(symbol, modifiers)
+
 if __name__ == "__main__":
     window = GameWindow(800, 600, "Epic Multiplayer")
     arcade.run()

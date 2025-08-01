@@ -1,15 +1,12 @@
 help-cmd:
-  name: "help-cmd"
+  name: "Help"
   type: cmd
+  command: help
   description: "Show available commands"
   function: "help_cmd"
 echo-cmd:
-  name: "echo-cmd"
+  name: "Echo"
   type: cmd
+  command: echo
   description: "Echo back the input"
   function: "echo_cmd"
-fps-cmd:
-  name: "fps-cmd"
-  type: cmd
-  description: "Toggle FPS counter display"
-  function: "fps_cmd" 
