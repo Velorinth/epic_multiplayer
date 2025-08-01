@@ -137,13 +137,10 @@ class Inventory:
     def _handle_hotbar_click(self, slot_index: int, button: int):
         target_stack = self.hotbar_slots[slot_index]
         if button == arcade.MOUSE_BUTTON_LEFT:
-            # Check if both cursor and target stacks have items and are of the same type
             if self.cursor_stack and target_stack and self._get_entity_hash(self.cursor_stack[0]) == self._get_entity_hash(target_stack[0]):
-                # If they are the same, stack them
                 target_stack.extend(self.cursor_stack)
                 self.cursor_stack.clear()
             else:
-                # Otherwise, swap them
                 self.cursor_stack, self.hotbar_slots[slot_index] = target_stack, self.cursor_stack
         elif button == arcade.MOUSE_BUTTON_RIGHT:
             if self.cursor_stack and (not target_stack or self._get_entity_hash(target_stack[0]) == self._get_entity_hash(self.cursor_stack[0])):
@@ -159,13 +156,10 @@ class Inventory:
         if slot_index < len(item_stacks):
             source_stack = item_stacks[slot_index]
             if button == arcade.MOUSE_BUTTON_LEFT:
-                # Check if both cursor and source stacks have items and are of the same type
                 if self.cursor_stack and source_stack and self._get_entity_hash(self.cursor_stack[0]) == self._get_entity_hash(source_stack[0]):
-                    # If same type, add cursor items to master list and clear cursor
                     self._master_item_list.extend(self.cursor_stack)
                     self.cursor_stack.clear()
                 else:
-                    # Otherwise, perform the swap
                     source_ids = {id(item) for item in source_stack}
                     self._master_item_list = [item for item in self._master_item_list if id(item) not in source_ids]
                     self._master_item_list.extend(self.cursor_stack)
@@ -183,6 +177,7 @@ class Inventory:
                 self.cursor_stack.clear()
             elif button == arcade.MOUSE_BUTTON_RIGHT:
                 if self.cursor_stack: self._master_item_list.append(self.cursor_stack.pop())
+                
     def _get_grouped_items(self) -> dict:
         grouped = collections.defaultdict(list)
         checked_out_ids = {id(item) for stack in self.hotbar_slots for item in stack}
@@ -197,45 +192,33 @@ class Inventory:
         """
         Clears and rebuilds all visual elements for the inventory and hotbar UI.
         """
-        # 1. Initialize fresh lists to hold all visual components
         self._shape_list = arcade.shape_list.ShapeElementList()
         self._sprite_list = arcade.SpriteList()
         self._text_list = []
         self._clickable_areas = {}
         
         # --- Rebuild Hotbar ---
-        # ----------------------
-        
-        # Calculate dimensions and starting position for the hotbar
         hotbar_width = (self.SLOT_SIZE * self.HOTBAR_SLOT_COUNT) + (self.SLOT_MARGIN * (self.HOTBAR_SLOT_COUNT - 1))
         hotbar_start_x = (screen_width / 2) - (hotbar_width / 2)
         hotbar_center_y = self.SLOT_SIZE / 2 + self.SLOT_MARGIN
         
-        # Draw each slot in the hotbar
         for i in range(self.HOTBAR_SLOT_COUNT):
-            # Calculate the center position of the current slot
             center_x = hotbar_start_x + (self.SLOT_SIZE / 2) + i * (self.SLOT_SIZE + self.SLOT_MARGIN)
             
-            # Draw the slot background
             slot_bg = arcade.shape_list.create_rectangle_filled(center_x, hotbar_center_y, self.SLOT_SIZE, self.SLOT_SIZE, self.SLOT_BG_COLOR)
             self._shape_list.append(slot_bg)
             
-            # Add a highlight if this slot is currently selected
             if i == self.selected_hotbar_slot:
                 highlight_border = arcade.shape_list.create_rectangle_outline(center_x, hotbar_center_y, self.SLOT_SIZE, self.SLOT_SIZE, self.SLOT_HIGHLIGHT_COLOR, 2)
                 self._shape_list.append(highlight_border)
                 
-            # Register the area for click detection
             left = center_x - self.SLOT_SIZE / 2
             bottom = hotbar_center_y - self.SLOT_SIZE / 2
             self._clickable_areas[("hotbar", i)] = (left, bottom, self.SLOT_SIZE, self.SLOT_SIZE)
             
-            # Draw the item sprite and count if the slot is not empty
             stack = self.hotbar_slots[i]
             if stack:
                 item, count = stack[0], len(stack)
-                
-                # Draw the item sprite
                 texture_name = item.params.get("texture")
                 if texture_name and texture_name in loaded_textures:
                     sprite = arcade.Sprite(loaded_textures[texture_name])
@@ -243,7 +226,6 @@ class Inventory:
                     sprite.position = (center_x, hotbar_center_y)
                     self._sprite_list.append(sprite)
                     
-                # Draw the stack count text if more than one item
                 if count > 1:
                     text_x = center_x + self.SLOT_SIZE / 2 - 8
                     text_y = hotbar_center_y - self.SLOT_SIZE / 2 + 5
@@ -251,51 +233,38 @@ class Inventory:
                     self._text_list.append(count_text)
 
         # --- Rebuild Inventory Window (if open) ---
-        # ------------------------------------------
-        
         if self.is_open:
             item_stacks = list(self._get_grouped_items().values())
             
-            # Determine the number of rows needed to display all items
             num_rows = self.INV_MIN_ROWS
             if item_stacks:
                 num_rows = max(self.INV_MIN_ROWS, math.ceil(len(item_stacks) / self.INV_COLS))
 
-            # Calculate inventory window dimensions and center
             window_width = (self.SLOT_SIZE * self.INV_COLS) + (self.SLOT_MARGIN * (self.INV_COLS + 1))
             window_height = (self.SLOT_SIZE * num_rows) + (self.SLOT_MARGIN * (num_rows + 1))
             win_center_x, win_center_y = screen_width / 2, screen_height / 2
             
-            # Draw the background panel for the inventory
             panel = arcade.shape_list.create_rectangle_filled(win_center_x, win_center_y, window_width, window_height, self.INV_WINDOW_COLOR)
             self._shape_list.append(panel)
             
-            # Calculate the starting position for the top-left slot
             inv_start_x = win_center_x - (window_width / 2) + self.SLOT_MARGIN + (self.SLOT_SIZE / 2)
             inv_start_y = win_center_y + (window_height / 2) - self.SLOT_MARGIN - (self.SLOT_SIZE / 2)
             
-            # Draw the grid of inventory slots
             for i in range(num_rows * self.INV_COLS):
                 row, col = divmod(i, self.INV_COLS)
                 
-                # Calculate the center of the current slot
                 center_x = inv_start_x + col * (self.SLOT_SIZE + self.SLOT_MARGIN)
                 center_y = inv_start_y - row * (self.SLOT_SIZE + self.SLOT_MARGIN)
                 
-                # Draw the slot background
                 slot_bg = arcade.shape_list.create_rectangle_filled(center_x, center_y, self.SLOT_SIZE, self.SLOT_SIZE, self.SLOT_BG_COLOR)
                 self._shape_list.append(slot_bg)
                 
-                # Register the area for click detection
                 left = center_x - self.SLOT_SIZE / 2
                 bottom = center_y - self.SLOT_SIZE / 2
                 self._clickable_areas[("inventory", i)] = (left, bottom, self.SLOT_SIZE, self.SLOT_SIZE)
                 
-                # If there's an item for this slot, draw it
                 if i < len(item_stacks):
                     item, count = item_stacks[i][0], len(item_stacks[i])
-                    
-                    # Draw the item sprite
                     texture_name = item.params.get("texture")
                     if texture_name and texture_name in loaded_textures:
                         sprite = arcade.Sprite(loaded_textures[texture_name])
@@ -303,15 +272,14 @@ class Inventory:
                         sprite.position = (center_x, center_y)
                         self._sprite_list.append(sprite)
                         
-                    # Draw the stack count text if more than one item
                     if count > 1:
                         text_x = center_x + self.SLOT_SIZE / 2 - 8
                         text_y = center_y - self.SLOT_SIZE / 2 + 5
                         count_text = arcade.Text(str(count), text_x, text_y, self.TEXT_COLOR, self.FONT_SIZE, anchor_x="center")
                         self._text_list.append(count_text)
 
-        # 3. Flag that the visuals have been updated
-        self._needs_rebuild = True
+        self._needs_rebuild = False
+        
     def draw(self, screen_width, screen_height, mouse_x, mouse_y):
         if self._needs_rebuild: self._rebuild_visuals(screen_width, screen_height)
         self._shape_list.draw(); self._sprite_list.draw()
@@ -321,7 +289,6 @@ class Inventory:
             self.cursor_sprite.position = (mouse_x, mouse_y)
             self.cursor_sprite_list.draw()
             if len(self.cursor_stack) > 1:
-                # CORRECTED: Use positional arguments for text, x, and y.
                 cursor_count_text = arcade.Text(
                     str(len(self.cursor_stack)),
                     mouse_x + 15,
@@ -334,7 +301,6 @@ class Inventory:
 
         if self.hovered_item_stack:
             item, name, desc = self.hovered_item_stack[0], self.hovered_item_stack[0].params.get("name", "Unknown"), self.hovered_item_stack[0].params.get("description", "")
-            # This tooltip creation already uses the correct format
             text_obj = arcade.Text(f"{name}\n{desc}", 0, 0, self.TEXT_COLOR, self.FONT_SIZE, multiline=True, width=self.TOOLTIP_WIDTH)
             box_width, box_height = text_obj.content_width + 20, text_obj.content_height + 20
             box_x, box_y = mouse_x + box_width/2 + 10, mouse_y - box_height/2 - 10

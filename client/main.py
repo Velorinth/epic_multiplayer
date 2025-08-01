@@ -92,11 +92,14 @@ class GameWindow(arcade.Window):
         super().on_resize(width, height)
         self.camera.match_window()
         self.gui_camera.match_window()
+        self.ui_manager.on_resize(width, height)
+        self.inventory._needs_rebuild = True
         scale_x = width / BASE_WIDTH
         scale_y = height / BASE_HEIGHT
         self.camera.zoom = max(scale_x, scale_y)
+        self.gui_camera.match_window()
+        self.gui_camera.position = (self.width / 2, self.height / 2)
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
-        print(x,y)
         self.mouse_x = x; self.mouse_y = y
         if not self.console.is_open:
             self.inventory.on_mouse_motion(x, y, dx, dy)
@@ -111,9 +114,11 @@ class GameWindow(arcade.Window):
         if not self.console.is_open:
             self.player.on_key_press_player(symbol, modifiers)
             self.inventory.on_key_press_inventory(symbol, modifiers)
+            
     def on_key_release(self, symbol, modifiers):
         if not self.console.is_open:
             self.player.on_key_release_player(symbol, modifiers)
+
 if __name__ == "__main__":
     window = GameWindow(800, 600, "Epic Multiplayer")
     arcade.run()
