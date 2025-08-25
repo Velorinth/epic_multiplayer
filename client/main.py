@@ -14,6 +14,7 @@ from game.music import MusicPlayer
 from entity.entity import Entity, update_entities
 from debug.console import DebugConsole
 
+
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 BASE_WIDTH = 960  # 20 tiles * 48 pixels/tile
@@ -35,9 +36,10 @@ class GameWindow(arcade.Window):
         self.inventory = Inventory()
         self.music_player = MusicPlayer()
         self.console = DebugConsole(self.player, self.inventory, self.ui_manager)
-
+        from networking.auth import auth
+        mock_auth_token = auth
         self.network_thread = threading.Thread(
-            target=start_client, args=(self.player,), daemon=True
+            target=start_client, args=(self.player,mock_auth_token), daemon=True
         )
         self.network_thread.start()
 

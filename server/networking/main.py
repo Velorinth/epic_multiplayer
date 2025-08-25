@@ -1,7 +1,7 @@
 import socket
 import threading
 from typing import Dict, Tuple
-from networking.logic import packet_handler
+from networking.registration.logic import packet_handler
 from update.data import entities
 from loader.content import get_object_properties as get_content, yml_content
 import json
@@ -16,6 +16,19 @@ class TCPServer:
 
     def handle_client(self, conn: socket.socket, addr: Tuple[str, int]):
         print(f"Client connected: {addr}")
+        s = conn
+        message = {
+            "type": "response",
+            "data": {
+                "type": "join",
+                "data": {
+                    "code": 400,
+                    "status": "accept",
+                    "player": 1,
+                }
+            }
+        }
+        s.sendall((json.dumps(message) + '\n').encode())  # Convert entire message to JSON once
         with self.lock:
             self.clients[addr] = conn
 
@@ -30,19 +43,12 @@ class TCPServer:
                 while b'\n' in buffer:
                     line, buffer = buffer.split(b'\n', 1)
                     if line:
-                        message = line.decode()
-                        data = json.loads(message)
-                        if data['type'] == 'join':
-                            print(f"Client joined: {addr}, sending map ")
-                            self.send_to_client(addr, json.dumps({'type': 'response', 'data': {'type': 'entities', 'data': entities}}))
-                            self.send_to_client(addr, json.dumps({'type': 'response', 'data': {'type': 'map', 'data':yml_content['map']}}))
-                        if data['type'] == 'update':
-                            if data['data']['type'] == 'player':
-                                pass
-                                #print(f"Player moved to ({data['data']['data']['x']}, {data['data']['data']['y']})")
-                        elif data['type'] == 'get':
-                            if data['data']['type'] == 'entities':
-                                self.send_to_client(addr, json.dumps({'type': 'response', 'data': {'type': 'entities', 'data': entities}}))
+                        try:
+                            message = line.decode()
+                            data = json.loads(message)
+                            packet_handler(self, addr, data)
+                        except json.JSONDecodeError:
+                            print(f"Received invalid JSON from {addr}: {line.decode(errors='ignore')}")
         except (ConnectionResetError, ConnectionAbortedError):
             print(f"Client disconnected: {addr}")
         finally:
